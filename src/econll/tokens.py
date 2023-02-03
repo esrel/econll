@@ -8,7 +8,7 @@ __version__ = "0.1.0"
 
 from dataclasses import dataclass, asdict
 
-from econll.chunk import Chunk
+from econll.chunks import Chunk
 
 
 # Type Aliases

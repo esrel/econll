@@ -234,7 +234,7 @@ def print_table(label: dict[str, dict[str, float]],
     :type total: dict
     :param title: text to print above
     :type title: str
-    :param style: table style (md, or None): used to set border, etc.
+    :param style: table style (md or None): used to set border, etc.
     :type style: str
     :param digits: precision
     :type digits: int

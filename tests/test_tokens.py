@@ -1,11 +1,11 @@
 import pytest
 
-from econll.token import is_boc, is_eoc
-from econll.token import correct, convert, relabel
-from econll.token import get_scheme, get_tagset, get_labels
-from econll.token import get_param
-from econll.token import get_chunks
-from econll.token import info
+from econll.tokens import is_boc, is_eoc
+from econll.tokens import correct, convert, relabel
+from econll.tokens import get_scheme, get_tagset, get_labels
+from econll.tokens import get_param
+from econll.tokens import get_chunks
+from econll.tokens import info
 
 from econll.reader import load
 

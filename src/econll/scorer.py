@@ -8,7 +8,7 @@ __version__ = "0.1.0"
 from collections import defaultdict
 from dataclasses import dataclass, asdict
 
-from econll.token import Token, relabel, correct
+from econll.tokens import Token, relabel, correct
 from econll.report import print_table, print_value
 
 

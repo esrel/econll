@@ -5,8 +5,8 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from econll.token import Token
-from econll.token import annotate, convert
+from econll.tokens import Token
+from econll.tokens import annotate, convert
 
 
 # Function to process data

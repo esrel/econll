@@ -225,6 +225,21 @@ def conll_chunks():
 
 
 @pytest.fixture
+def conll_chunks_tokens():
+    return [
+        ['a'],
+        ['a', 'b', 'c'],
+        ['b', 'c'],
+        ['b'], ['c'], ['e'],
+        ['b', 'c'], ['e'],
+        ['c'], ['e'],
+        ['c', 'd'], ['f', 'g'],
+        ['c', 'd'], ['e', 'f'],
+        ['f', 'g', 'h']
+    ]
+
+
+@pytest.fixture
 def conll_refs_info():
     return {
         "scheme": "IOB",

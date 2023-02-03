@@ -1,6 +1,6 @@
 from econll.reader import load
 
-from econll.token import correct
+from econll.tokens import correct
 
 from econll.scorer import Stats
 from econll.scorer import compute_token_stats, compute_affix_stats, compute_label_stats, compute_chunk_stats

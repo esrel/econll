@@ -1,8 +1,8 @@
 import pytest
 
 from econll.reader import load
-from econll.token import get_chunks
-from econll.token import Chunk
+from econll.tokens import get_chunks
+from econll.tokens import Chunk
 
 
 def test_chunk_validate():

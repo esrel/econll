@@ -10,7 +10,7 @@ import argparse
 
 import json
 
-from econll.token import correct, convert
+from econll.tokens import correct, convert
 from econll.reader import read, save, load, dump, split, merge, get_tags, get_refs
 from econll.scorer import evaluate
 
@@ -98,11 +98,14 @@ def main():
     # check argument requirements
     check_arguments(cmd, args)
 
+    # read scheme mapping
+    mapping = read_mapping(args.mapping) if args.mapping else None
+
     # read data
     data = read(args.ipath, separator=args.separator, boundary=args.boundary, docstart=args.docstart)
     tags = get_tags(data)
     cols = split(data)
-    hyps = load(tags, kind=args.kind, glue=args.glue, otag=args.otag, scheme=read_mapping(args.mapping))
+    hyps = load(tags, kind=args.kind, glue=args.glue, otag=args.otag, scheme=mapping)
 
     if cmd in ["correct", "convert"]:
         # correct affixes of hyps
@@ -120,7 +123,7 @@ def main():
             refs_tags = get_tags(refs_data)
             refs = load(refs_tags)
         else:
-            refs = get_refs(data)
+            refs = load(get_refs(data))
 
         evaluate(refs, hyps, digits=args.digits, style=args.style)
 

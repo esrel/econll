@@ -86,4 +86,4 @@ def test_accuracy(conll_refs, conll_hyps):
     corrected_hyps = correct(hyps)
 
     assert token_accuracy(refs, corrected_hyps) == 0.82
-    assert block_accuracy(refs, corrected_hyps) == 0.4
+    assert block_accuracy(refs, corrected_hyps) == 0.40

@@ -323,6 +323,24 @@ def ref_token_stats():
 
 
 @pytest.fixture
+def ref_label_stats():
+    return {
+        "None": {"true": 23, "gold": 25, "pred": 27},
+        "X": {"true": 12, "gold": 16, "pred": 13},
+        "Y": {"true": 8, "gold": 9, "pred": 10}
+    }
+
+
+@pytest.fixture
+def ref_affix_stats():
+    return {
+        'O': {'true': 23, 'gold': 25, 'pred': 27},
+        'B': {'true': 10, 'gold': 15, 'pred': 12},
+        'I': {'true': 7, 'gold': 10, 'pred': 11}
+    }
+
+
+@pytest.fixture
 def ref_chunk_stats():
     return {
         "X": {"true": 3, "gold": 10, "pred": 8},
@@ -332,6 +350,16 @@ def ref_chunk_stats():
 
 @pytest.fixture
 def ref_total_token_stats():
+    return {"true": 40, "gold": 50, "pred": 50}
+
+
+@pytest.fixture
+def ref_total_label_stats():
+    return {"true": 43, "gold": 50, "pred": 50}
+
+
+@pytest.fixture
+def ref_total_affix_stats():
     return {"true": 40, "gold": 50, "pred": 50}
 
 

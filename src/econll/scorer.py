@@ -8,7 +8,7 @@ __version__ = "0.1.0"
 from collections import defaultdict
 from dataclasses import dataclass, asdict
 
-from econll.reader import Token, relabel, correct
+from econll.token import Token, relabel, correct
 from econll.report import print_table, print_value
 
 
@@ -120,6 +120,19 @@ def compute_chunk_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dic
     return dict(stats)
 
 
+# "alias" functions
+def compute_token_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
+    return compute_param_stats(refs, hyps, param="token")
+
+
+def compute_affix_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
+    return compute_param_stats(refs, hyps, param="affix")
+
+
+def compute_label_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
+    return compute_param_stats(refs, hyps, param="label")
+
+
 def sum_stats(stats: dict[str, Stats]) -> Stats:
     """
     sum label-level stats
@@ -209,19 +222,6 @@ def block_accuracy(refs: list[list[Token]], hyps: list[list[Token]]) -> float:
            for i, block in enumerate(refs)]
     acc = sum(cor) / len(cor) if cor else 0.0
     return acc
-
-
-# "alias" functions
-def compute_token_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
-    return compute_param_stats(refs, hyps, param="token")
-
-
-def compute_affix_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
-    return compute_param_stats(refs, hyps, param="affix")
-
-
-def compute_label_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
-    return compute_param_stats(refs, hyps, param="label")
 
 
 def tokeneval(refs: list[list[Token]],

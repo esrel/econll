@@ -1,7 +1,7 @@
 import pytest
 
 from econll.reader import parse_tag
-from econll.reader import validate
+from econll.reader import validate, validate_scheme_mapping
 from econll.reader import merge, split
 from econll.reader import read, save
 from econll.reader import load, dump
@@ -82,3 +82,15 @@ def test_validate(conll_text, conll_refs, conll_hyps):
     # fail
     with pytest.raises(ValueError):
         validate(conll_data)
+
+
+def test_validate_scheme_mapping():
+    scheme_pass = [{"L": "E", "U": "S"}, {"B": "B", "I": "I", "L": "E", "O": "O", "U": "S"}]
+    scheme_fail = [{"E": "L", "S": "U"}, {"B": "B", "I": "I", "E": "L", "O": "O", "S": "U"}]
+
+    for sch in scheme_pass:
+        validate_scheme_mapping(sch)
+
+    for sch in scheme_fail:
+        with pytest.raises(ValueError):
+            validate_scheme_mapping(sch)

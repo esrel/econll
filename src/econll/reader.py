@@ -56,7 +56,7 @@ def load(data: list[list[str]],
     :return:
     :rtype: list
     """
-    scheme = {} if scheme is None else scheme
+    scheme = {} if scheme is None else validate_scheme_mapping(scheme)
     group = [[Token(token, *parse_tag(token, kind=kind, glue=glue, otag=otag, scheme=scheme)) for token in block]
              for block in data]
     group = annotate(group)
@@ -221,3 +221,20 @@ def get_hyps(data: list[list[tuple[str, ...]]]) -> list[list[str]]:
 
 def get_text(data: list[list[tuple[str, ...]]]) -> list[list[str]]:
     return get_field(data, 0)
+
+
+# other functions
+def validate_scheme_mapping(scheme: dict[str, str]) -> dict[str, str]:
+    """
+    validate scheme mapping
+    :param scheme: mapping
+    :type scheme:
+    :return: mapping
+    :type: dict
+    """
+    if scheme:
+        # check if values are in "IOBES"
+        if not all([v in "IOBES" for _, v in scheme.items()]):
+            raise ValueError(f"Invalid Mapping: {scheme}!")
+
+    return scheme

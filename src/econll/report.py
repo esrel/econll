@@ -234,7 +234,7 @@ def print_table(label: dict[str, dict[str, float]],
     :type total: dict
     :param title: text to print above
     :type title: str
-    :param style: table style (md, or None): used to set border, etc.
+    :param style: table style (md or None): used to set border, etc.
     :type style: str
     :param digits: precision
     :type digits: int
@@ -322,7 +322,7 @@ def print_value(value: int | float,
     int_width = max(num_width, len(str(value)))
 
     title_str = format_cell(title, width=str_width)
-    notes_str = format_cell(notes, width=str_width)
+    notes_str = format_cell(notes, width=str_width) if notes else ""
     value_str = format_cell(value, width=(int_width if type(value) is int else num_width), align=">", digits=digits)
 
     return colsep.join([title_str, value_str]) + notes_str

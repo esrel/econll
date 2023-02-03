@@ -8,7 +8,7 @@ __version__ = "0.1.0"
 from collections import defaultdict
 from dataclasses import dataclass, asdict
 
-from econll.reader import Token, relabel, correct
+from econll.tokens import Token, relabel, correct
 from econll.report import print_table, print_value
 
 
@@ -120,6 +120,19 @@ def compute_chunk_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dic
     return dict(stats)
 
 
+# "alias" functions
+def compute_token_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
+    return compute_param_stats(refs, hyps, param="token")
+
+
+def compute_affix_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
+    return compute_param_stats(refs, hyps, param="affix")
+
+
+def compute_label_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
+    return compute_param_stats(refs, hyps, param="label")
+
+
 def sum_stats(stats: dict[str, Stats]) -> Stats:
     """
     sum label-level stats
@@ -211,19 +224,6 @@ def block_accuracy(refs: list[list[Token]], hyps: list[list[Token]]) -> float:
     return acc
 
 
-# "alias" functions
-def compute_token_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
-    return compute_param_stats(refs, hyps, param="token")
-
-
-def compute_affix_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
-    return compute_param_stats(refs, hyps, param="affix")
-
-
-def compute_label_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
-    return compute_param_stats(refs, hyps, param="label")
-
-
 def tokeneval(refs: list[list[Token]],
               hyps: list[list[Token]]
               ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
@@ -254,6 +254,7 @@ def chunkeval(refs: list[list[Token]],
 
 
 def evaluate(refs: list[list[Token]], hyps: list[list[Token]],
+             style: str = None,
              digits: int = 4,
              split_labels: bool = False,
              segmentation: bool = False,
@@ -264,6 +265,8 @@ def evaluate(refs: list[list[Token]], hyps: list[list[Token]],
     :type refs: list
     :param hyps: hypotheses as blocks of Token objects
     :type hyps: list
+    :param style: table style (md, or None): used to set border, etc.
+    :type style: str
     :param digits: decimal precision
     :type digits: int
     :param split_labels: if to evaluate affix & label separately
@@ -296,21 +299,30 @@ def evaluate(refs: list[list[Token]], hyps: list[list[Token]],
                       colsep=":"))
 
     # token-level evaluation
-    print(print_table(*compute_scores(compute_token_stats(refs, hyps)), digits=digits, title="Token-Level Evaluation"))
+    print(print_table(*compute_scores(compute_token_stats(refs, hyps)),
+                      title="Token-Level Evaluation",
+                      style=style,
+                      digits=digits))
 
     if split_labels:
         print(print_table(*compute_scores(compute_label_stats(refs, hyps)),
                           title="Label-Level Evaluation",
+                          style=style,
                           digits=digits))
         print(print_table(*compute_scores(compute_affix_stats(refs, hyps)),
                           title="Affix-Level Evaluation",
+                          style=style,
                           digits=digits))
 
     # chunk-level evaluation
-    print(print_table(*compute_scores(compute_chunk_stats(refs, hyps)), digits=digits, title="Chunk-Level Evaluation"))
+    print(print_table(*compute_scores(compute_chunk_stats(refs, hyps)),
+                      title="Chunk-Level Evaluation",
+                      style=style,
+                      digits=digits))
 
     # chunk-level segmentation evaluation
     if segmentation:
         print(print_table(*compute_scores(compute_chunk_stats(relabel(refs, "chunk"), relabel(hyps, "chunk"))),
                           title="Segmentation Evaluation",
+                          style=style,
                           digits=digits))

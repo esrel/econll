@@ -322,7 +322,7 @@ def print_value(value: int | float,
     int_width = max(num_width, len(str(value)))
 
     title_str = format_cell(title, width=str_width)
-    notes_str = format_cell(notes, width=str_width)
+    notes_str = format_cell(notes, width=str_width) if notes else ""
     value_str = format_cell(value, width=(int_width if type(value) is int else num_width), align=">", digits=digits)
 
     return colsep.join([title_str, value_str]) + notes_str

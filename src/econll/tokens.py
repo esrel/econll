@@ -3,12 +3,10 @@
 __author__ = "Evgeny A. Stepanov"
 __email__ = "stepanov.evgeny.a@gmail.com"
 __status__ = "dev"
-__version__ = "0.1.0"
+__version__ = "0.1.3"
 
 
 from dataclasses import dataclass, asdict
-
-from econll.chunks import Chunk
 
 
 # Type Aliases
@@ -33,6 +31,10 @@ class Token:
     # block flags
     bob: bool = None  # block begin
     eob: bool = None  # block end
+
+    # character span (for later use)
+    bos: int = None
+    eos: int = None
 
     def __post_init__(self):
         self.label = None if not self.label else self.label
@@ -248,27 +250,6 @@ def get_param(data: list[list[Token]], param: str) -> list[list[Param]]:
     return [[getattr(token, param) for token in block] for block in data]
 
 
-def get_chunks(data: list[list[Token]]) -> list[Chunk]:
-    """
-    get list of chunks as
-    :param data: data as list of lists of Tokens
-    :type data: list
-    :return: chunks
-    :rtype: list
-    """
-    chunks = []
-    for i, block in enumerate(data):
-        boc = 0
-        for j, token in enumerate(block):
-            if token.boc and token.eoc:
-                chunks.append(Chunk(bos=j, eos=j + 1, block=i, label=token.label))
-            elif token.boc and not token.eoc:
-                boc = j
-            elif token.eoc and not token.boc:
-                chunks.append(Chunk(bos=boc, eos=j + 1, block=i, label=token.label))
-    return chunks
-
-
 # Functions to get a new modified list[list[Token]]
 def convert(data: list[list[Token]], scheme: str) -> list[list[Token]]:
     """
@@ -322,5 +303,5 @@ def info(data: list[list[Token]]) -> dict[str, Param]:
         "tagset": len(get_tagset(data)),
         "tokens": len([token for block in data for token in block]),
         "blocks": len(data),
-        "chunks": len(get_chunks(data))
+        "chunks": sum([1 for block in data for token in block if token.boc])
     }

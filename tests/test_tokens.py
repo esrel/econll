@@ -4,7 +4,6 @@ from econll.tokens import is_boc, is_eoc
 from econll.tokens import correct, convert, relabel
 from econll.tokens import get_scheme, get_tagset, get_labels
 from econll.tokens import get_param
-from econll.tokens import get_chunks
 from econll.tokens import info
 
 from econll.reader import load
@@ -110,13 +109,6 @@ def test_relabel(conll_refs, conll_refs_segmentation):
 def test_correct(conll_hyps, conll_hyps_correct):
     hyps = load(conll_hyps)
     assert conll_hyps_correct == get_param(correct(hyps), "tag")
-
-
-def test_get_chunks(conll_refs, conll_chunks):
-    refs = load(conll_refs)
-    chunks = get_chunks(refs)
-
-    assert conll_chunks == [chunk.asdict() for chunk in chunks]
 
 
 def test_info(conll_refs, conll_refs_info):

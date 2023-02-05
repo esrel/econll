@@ -16,7 +16,7 @@ Param = str | int | bool | None
 @dataclass
 class Token:
     # generic token attributes
-    token: str  # token (input tag)
+    token: str = None  # token text
 
     # chunk affix & label
     affix: str = None  # scheme affix: IOB(ES) prefix or suffix; one of {I, O, B, E, S}

@@ -206,36 +206,36 @@ def conll_tagset(conll_labels):
 @pytest.fixture
 def conll_chunks():
     return [
-        {'bos': 0, 'eos': 1, 'block': 1, 'label': 'X', 'value': None},
-        {'bos': 0, 'eos': 3, 'block': 2, 'label': 'X', 'value': None},
-        {'bos': 1, 'eos': 3, 'block': 3, 'label': 'X', 'value': None},
-        {'bos': 1, 'eos': 2, 'block': 4, 'label': 'X', 'value': None},
-        {'bos': 2, 'eos': 3, 'block': 4, 'label': 'X', 'value': None},
-        {'bos': 4, 'eos': 5, 'block': 4, 'label': 'X', 'value': None},
-        {'bos': 1, 'eos': 3, 'block': 5, 'label': 'X', 'value': None},
-        {'bos': 4, 'eos': 5, 'block': 5, 'label': 'Y', 'value': None},
-        {'bos': 2, 'eos': 3, 'block': 6, 'label': 'X', 'value': None},
-        {'bos': 4, 'eos': 5, 'block': 6, 'label': 'Y', 'value': None},
-        {'bos': 2, 'eos': 4, 'block': 7, 'label': 'X', 'value': None},
-        {'bos': 5, 'eos': 7, 'block': 7, 'label': 'Y', 'value': None},
-        {'bos': 2, 'eos': 4, 'block': 8, 'label': 'X', 'value': None},
-        {'bos': 4, 'eos': 6, 'block': 8, 'label': 'Y', 'value': None},
-        {'bos': 5, 'eos': 8, 'block': 9, 'label': 'Y', 'value': None},
+        [],
+        [{'boc': 0, 'eoc': 1, 'label': 'X', 'score': 1}],
+        [{'boc': 0, 'eoc': 3, 'label': 'X', 'score': 3}],
+        [{'boc': 1, 'eoc': 3, 'label': 'X', 'score': 2}],
+        [
+            {'boc': 1, 'eoc': 2, 'label': 'X', 'score': 1},
+            {'boc': 2, 'eoc': 3, 'label': 'X', 'score': 1},
+            {'boc': 4, 'eoc': 5, 'label': 'X', 'score': 1}
+        ],
+        [{'boc': 1, 'eoc': 3, 'label': 'X', 'score': 2}, {'boc': 4, 'eoc': 5, 'label': 'Y', 'score': 1}],
+        [{'boc': 2, 'eoc': 3, 'label': 'X', 'score': 1}, {'boc': 4, 'eoc': 5, 'label': 'Y', 'score': 1}],
+        [{'boc': 2, 'eoc': 4, 'label': 'X', 'score': 2}, {'boc': 5, 'eoc': 7, 'label': 'Y', 'score': 2}],
+        [{'boc': 2, 'eoc': 4, 'label': 'X', 'score': 2}, {'boc': 4, 'eoc': 6, 'label': 'Y', 'score': 2}],
+        [{'boc': 5, 'eoc': 8, 'label': 'Y', 'score': 3}]
     ]
 
 
 @pytest.fixture
 def conll_chunks_tokens():
     return [
-        ['a'],
-        ['a', 'b', 'c'],
-        ['b', 'c'],
-        ['b'], ['c'], ['e'],
-        ['b', 'c'], ['e'],
-        ['c'], ['e'],
-        ['c', 'd'], ['f', 'g'],
-        ['c', 'd'], ['e', 'f'],
-        ['f', 'g', 'h']
+        [],
+        [['a']],
+        [['a', 'b', 'c']],
+        [['b', 'c']],
+        [['b'], ['c'], ['e']],
+        [['b', 'c'], ['e']],
+        [['c'], ['e']],
+        [['c', 'd'], ['f', 'g']],
+        [['c', 'd'], ['e', 'f']],
+        [['f', 'g', 'h']]
     ]
 
 

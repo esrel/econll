@@ -85,10 +85,15 @@ def format_rows(scores: dict[str, dict[str, float]],
     :rtype: list
     """
     rows = []
-    for label, metrics in sorted(scores.items()):
+    for label, scores_dict in sorted(scores.items()):
+        report_dict = report.get(label, {})
+        # ensure correct order of values
+        score_list = [scores_dict.get(param) for param in ["p", "r", "f"]]
+        stats_list = [report_dict.get(param) for param in ["gold", "pred", "true"]]
+
         row = [format_cell(label, width=str_width)] + \
-              [format_cell(v, width=num_width, align=">", digits=digits) for k, v in metrics.items()] + \
-              [format_cell(v, width=int_width, align=">") for k, v in report.get(label).items()]
+              [format_cell(v, width=num_width, align=">", digits=digits) for v in score_list] + \
+              [format_cell(v, width=int_width, align=">") for v in stats_list]
         rows.append(row)
     return rows
 
@@ -120,7 +125,7 @@ def format_header(str_width: int = 10, num_width: int = 6, int_width: int = 6) -
 def print_table(label_scores: dict[str, dict[str, float]],
                 label_report: dict[str, dict[str, int]],
                 total_scores: dict[str, dict[str, float]] = None,
-                total_report: dict[str, dict[str, float]] = None,
+                total_report: dict[str, dict[str, int]] = None,
                 title: str = None,
                 digits: int = 4,
                 colsep: str = " "
@@ -146,7 +151,7 @@ def print_table(label_scores: dict[str, dict[str, float]],
     """
     # check total
     total_scores = {} if total_scores is None else total_scores
-    total_report = {} if total_report is None else {k: total_report for k, _ in total_scores.items()}
+    total_report = {} if total_report is None else total_report
 
     # set title
     title = "Evaluation Report" if not title else title
@@ -204,4 +209,4 @@ def print_value(value: int | float,
     notes_str = format_cell(notes, width=str_width) if notes else ""
     value_str = format_cell(value, width=(int_width if type(value) is int else num_width), align=">", digits=digits)
 
-    return colsep.join([title_str, value_str]) + notes_str
+    return colsep.join([title_str, value_str]) + " " + notes_str

@@ -119,12 +119,14 @@ def test_report(conll_refs, conll_hyps):
     refs = load(conll_refs)
     hyps = load(conll_hyps)
 
-    token_labels, token_totals = score(refs, hyps, level="tag")
-    chunk_labels, chunk_totals = score(refs, hyps, level="chunk")
+    token_labels, token_report, token_totals, token_total_report = score(refs, hyps, level="tag")
+    chunk_labels, chunk_report, chunk_totals, chunk_total_report = score(refs, hyps, level="chunk")
 
     # not checking values
-    assert len(token_labels) == 5
+    assert len(token_labels) == len(token_report) == 5
     assert len(token_totals) == 3
+    assert len(token_total_report) == 3
 
-    assert len(chunk_labels) == 2
+    assert len(chunk_labels) == len(chunk_report) == 2
     assert len(chunk_totals) == 3
+    assert len(chunk_total_report) == 3

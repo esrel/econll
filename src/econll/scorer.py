@@ -225,10 +225,7 @@ def block_accuracy(refs: list[list[Token]], hyps: list[list[Token]]) -> float:
 def score(refs: list[list[Token]],
           hyps: list[list[Token]],
           level: str = None
-          ) -> tuple[dict[str, dict[str, float]],
-                     dict[str, dict[str, int]],
-                     dict[str, dict[str, float]],
-                     dict[str, int]]:
+          ) -> tuple[dict[str, dict[str, float]], ...]:
     """
     tag-level evaluation
     :param refs: references as blocks of Token objects
@@ -248,17 +245,14 @@ def score(refs: list[list[Token]],
     label_report = {k: v.report() for k, v in stats.items()}
 
     total_scores = compute_totals(stats)
-    total_report = sum_stats(stats).report()
+    total_report = {k: sum_stats(stats).report() for k, _v in total_scores.items()}
 
     return label_scores, label_report, total_scores, total_report
 
 
 def tokeneval(refs: list[list[Token]],
               hyps: list[list[Token]]
-              ) -> tuple[dict[str, dict[str, float]],
-                         dict[str, dict[str, int]],
-                         dict[str, dict[str, float]],
-                         dict[str, int]]:
+              ) -> tuple[dict[str, dict[str, float]], ...]:
     """
     tag-level evaluation
     :param refs: references as blocks of Token objects
@@ -273,10 +267,7 @@ def tokeneval(refs: list[list[Token]],
 
 def chunkeval(refs: list[list[Token]],
               hyps: list[list[Token]]
-              ) -> tuple[dict[str, dict[str, float]],
-                         dict[str, dict[str, int]],
-                         dict[str, dict[str, float]],
-                         dict[str, int]]:
+              ) -> tuple[dict[str, dict[str, float]], ...]:
     """
     chunk-level evaluation
     :param refs: references as blocks of Token objects

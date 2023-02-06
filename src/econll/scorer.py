@@ -225,7 +225,10 @@ def block_accuracy(refs: list[list[Token]], hyps: list[list[Token]]) -> float:
 def score(refs: list[list[Token]],
           hyps: list[list[Token]],
           level: str = None
-          ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
+          ) -> tuple[dict[str, dict[str, float]],
+                     dict[str, dict[str, int]],
+                     dict[str, dict[str, float]],
+                     dict[str, int]]:
     """
     tag-level evaluation
     :param refs: references as blocks of Token objects
@@ -243,18 +246,19 @@ def score(refs: list[list[Token]],
 
     label_scores = compute_scores(stats)
     label_report = {k: v.report() for k, v in stats.items()}
-    label_result = {k: {**v, **label_report.get(k)} for k, v in label_scores.items()}
 
     total_scores = compute_totals(stats)
     total_report = sum_stats(stats).report()
-    total_result = {k: {**v, **total_report} for k, v in total_scores.items()}
 
-    return label_result, total_result
+    return label_scores, label_report, total_scores, total_report
 
 
 def tokeneval(refs: list[list[Token]],
               hyps: list[list[Token]]
-              ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
+              ) -> tuple[dict[str, dict[str, float]],
+                         dict[str, dict[str, int]],
+                         dict[str, dict[str, float]],
+                         dict[str, int]]:
     """
     tag-level evaluation
     :param refs: references as blocks of Token objects
@@ -269,7 +273,10 @@ def tokeneval(refs: list[list[Token]],
 
 def chunkeval(refs: list[list[Token]],
               hyps: list[list[Token]]
-              ) -> tuple[dict[str, dict[str, float]], dict[str, dict[str, float]]]:
+              ) -> tuple[dict[str, dict[str, float]],
+                         dict[str, dict[str, int]],
+                         dict[str, dict[str, float]],
+                         dict[str, int]]:
     """
     chunk-level evaluation
     :param refs: references as blocks of Token objects

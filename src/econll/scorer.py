@@ -3,7 +3,7 @@
 __author__ = "Evgeny A. Stepanov"
 __email__ = "stepanov.evgeny.a@gmail.com"
 __status__ = "dev"
-__version__ = "0.1.0"
+__version__ = "0.1.3"
 
 
 from collections import defaultdict

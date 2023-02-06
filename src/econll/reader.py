@@ -1,4 +1,5 @@
 """ Container & Methods for CoNLL-type Data """
+
 __author__ = "Evgeny A. Stepanov"
 __email__ = "stepanov.evgeny.a@gmail.com"
 __status__ = "dev"

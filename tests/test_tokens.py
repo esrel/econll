@@ -5,6 +5,7 @@ from econll.tokens import correct, convert, relabel
 from econll.tokens import get_scheme, get_tagset, get_labels
 from econll.tokens import get_param
 from econll.tokens import info
+from econll.tokens import make_tagset
 
 from econll.reader import load
 
@@ -114,3 +115,10 @@ def test_correct(conll_hyps, conll_hyps_correct):
 def test_info(conll_refs, conll_refs_info):
     refs = load(conll_refs)
     assert conll_refs_info == info(refs)
+
+
+def test_make_tagset():
+    labels = {"X", "Y"}
+    scheme = "IOBES"
+    tagset = {"O", "B-X", "B-Y", "I-X", "I-Y", "E-X", "E-Y", "S-X", "S-Y"}
+    assert tagset == make_tagset(labels, scheme)

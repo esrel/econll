@@ -305,3 +305,19 @@ def info(data: list[list[Token]]) -> dict[str, Param]:
         "blocks": len(data),
         "chunks": sum([1 for block in data for token in block if token.boc])
     }
+
+
+def make_tagset(labels: set[str], scheme: str) -> set[str]:
+    """
+    generate a tagset from a set of labels and scheme string
+    the difference from ``get_tagset`` is this method generates all possible tags, not just the ones observed
+    :param labels: set of labels
+    :type labels: set
+    :param scheme: scheme string (one of supported)
+    :type scheme: str
+    :return: tagset
+    :rtype: set
+    """
+    tagset = {"O"}
+    [[tagset.add(f"{affix}-{label}") for affix in {*scheme.replace("O", "")}] for label in labels]
+    return tagset

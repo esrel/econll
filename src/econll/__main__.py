@@ -10,9 +10,8 @@ import argparse
 
 import json
 
-from econll.tokens import correct, convert
-from econll.reader import read, save, load, dump, split, merge, get_tags, get_refs
-from econll import evaluate
+from econll.reader import read, save, split, merge, get_tags, get_refs
+from econll import evaluate, correct_tags, convert_scheme
 
 
 def read_mapping(path: str) -> dict[str, str]:
@@ -111,10 +110,9 @@ def main():
 
     if cmd in ["correct", "convert"]:
         # correct affixes of hyps
-        correct_hyps = correct(load(hyps, **tf_params)) \
-            if cmd == "correct" else convert(load(hyps, **tf_params), args.scheme)
-        correct_tags = dump(correct_hyps)
-        correct_data = merge(*cols[:-1], correct_tags)
+        correct_hyps = correct_tags(hyps, **tf_params) \
+            if cmd == "correct" else convert_scheme(hyps, args.scheme, **tf_params)
+        correct_data = merge(*cols[:-1], correct_hyps)
 
         # save data
         save(correct_data, args.opath)

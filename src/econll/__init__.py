@@ -6,7 +6,7 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from econll.reader import load
+from econll.reader import load, dump
 from econll.scorer import compute_scores
 from econll.scorer import block_accuracy, token_accuracy
 from econll.scorer import tokeneval, chunkeval, score
@@ -20,6 +20,20 @@ def token_eval(refs: list[list[str]], hyps: list[list[str]], **kwargs) -> tuple[
 
 def chunk_eval(refs: list[list[str]], hyps: list[list[str]], **kwargs) -> tuple[dict[str, dict[str, float]], ...]:
     return chunkeval(load(refs, **kwargs), load(hyps, **kwargs))
+
+
+def convert_scheme(data: list[list[str]], scheme: str, **kwargs) -> list[list[str]]:
+    data_toks = load(data, **kwargs)
+    conv_data = convert(data_toks, scheme)
+    conv_tags = dump(conv_data)
+    return conv_tags
+
+
+def correct_tags(data: list[list[str]], **kwargs) -> list[list[str]]:
+    data_toks = load(data, **kwargs)
+    corr_data = correct(data_toks)
+    corr_tags = dump(corr_data)
+    return corr_tags
 
 
 def evaluate(refs: list[list[str]], hyps: list[list[str]], digits: int = 4, **kwargs) -> None:

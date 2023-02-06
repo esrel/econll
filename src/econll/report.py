@@ -209,4 +209,7 @@ def print_value(value: int | float,
     notes_str = format_cell(notes, width=str_width) if notes else ""
     value_str = format_cell(value, width=(int_width if type(value) is int else num_width), align=">", digits=digits)
 
-    return colsep.join([title_str, value_str]) + " " + notes_str
+    print_str = colsep.join([title_str, value_str])
+    print_str = print_str + " " + notes_str if notes_str else print_str
+
+    return print_str

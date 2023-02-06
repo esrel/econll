@@ -128,7 +128,7 @@ def print_table(label_scores: dict[str, dict[str, float]],
                 total_report: dict[str, dict[str, int]] = None,
                 title: str = None,
                 digits: int = 4,
-                colsep: str = " "
+                colsep: str = "\t"
                 ) -> str:
     """
     print evaluation report as a table (string)

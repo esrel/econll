@@ -49,6 +49,7 @@ def evaluate(refs: list[list[str]], hyps: list[list[str]], digits: int = 4, **kw
     refs = load(refs, **kwargs)
     hyps = load(hyps, **kwargs)
 
+    print("\n")
     # accuracies
     print(print_value(token_accuracy(refs, hyps), title="Token Accuracy", digits=digits))
     print(print_value(block_accuracy(refs, hyps), title="Block Accuracy", digits=digits))
@@ -60,7 +61,7 @@ def evaluate(refs: list[list[str]], hyps: list[list[str]], digits: int = 4, **kw
                       title="Block Accuracy", notes="(corrected)", digits=digits))
 
     # token-level evaluation
-    print(print_table(*score(refs, hyps), title="Token-Level Evaluation", digits=digits))
+    print(print_table(*score(refs, hyps, level="tag"), title="Token-Level Evaluation", digits=digits))
 
     # chunk-level evaluation
     print(print_table(*score(refs, hyps), title="Chunk-Level Evaluation", digits=digits))

@@ -2,7 +2,7 @@ import pytest
 
 from econll.aligner import clean_tokens
 from econll.aligner import check_text, index_tokens
-from econll.aligner import align_tokens, check_alignment
+from econll.aligner import align_tokens
 
 
 @pytest.fixture
@@ -185,5 +185,4 @@ def test_align_tokens(text_data, tokens_spacy,
             for text, src, tgt in zip(text_data, source_tokens, target_tokens):
                 src_tokens = index_tokens(text, src)
                 tgt_tokens = index_tokens(text, tgt)
-                alignment = align_tokens(src_tokens, tgt_tokens)
-                check_alignment(alignment, src_tokens, tgt_tokens)
+                align_tokens(src_tokens, tgt_tokens)

@@ -153,36 +153,3 @@ def alignment_is_valid(alignment: list[tuple[list[int], list[int]]],
     source_index = [idx for src, tgt in alignment for idx in src]
     target_index = [idx for src, tgt in alignment for idx in tgt]
     return True if len(source_index) == len(source) and len(target_index) == len(target) else False
-
-
-# alignment processing methods
-def check_alignment(alignment: list[tuple[list[int], list[int]]],
-                    source: list[Token],
-                    target: list[Token],
-                    # criteria
-                    min_chars: int = 1,
-                    max_split: int = 3
-                    ) -> list[int]:
-    """
-    process an alignment to return a list of indices to tokens in source that satisfy the criteria
-    :param alignment: alignment as a list of tuples
-    :type alignment: list
-    :param source: source tokens
-    :type source: list
-    :param target: target tokens
-    :type target: list
-    :param min_chars: minimum allowed length of the first piece of a split token
-    :type min_chars: int
-    :param max_split: maximum allowed number of pieces a token can be split into
-    :type max_split: int
-    :return: token indices
-    :rtype: list
-    """
-    # maximum number of pieces & length of the first piece filter
-    alignment = [(src_idx_list, tgt_idx_list) for src_idx_list, tgt_idx_list in alignment if
-                 (len(tgt_idx_list) <= max_split and len(target[tgt_idx_list[0]]) >= min_chars)]
-
-    alignment = [(src_idx_list, tgt_idx_list) for src_idx_list, tgt_idx_list in alignment if
-                 (len(src_idx_list) <= max_split and len(source[src_idx_list[0]]) >= min_chars)]
-
-    return [idx for src, _ in alignment for idx in src]

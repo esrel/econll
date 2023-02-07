@@ -165,9 +165,6 @@ def check_alignment(alignment: list[tuple[list[int], list[int]]],
                     ) -> list[int]:
     """
     process an alignment to return a list of indices to tokens in source that satisfy the criteria
-
-    - ignore merged tokens
-
     :param alignment: alignment as a list of tuples
     :type alignment: list
     :param source: source tokens

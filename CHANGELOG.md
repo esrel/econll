@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## Aligner
+- added aligner methods and tests
+- updated token with magic methods `__len__` and `__contains__`
+
 ## Unreleased
 
 - updated README.md

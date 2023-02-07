@@ -94,6 +94,12 @@ class Token:
 
         return self.update("affix", affix)
 
+    def __contains__(self, other: 'Token') -> bool:
+        return True if other.bos >= self.bos and other.eos <= self.eos else False
+
+    def __len__(self) -> int:
+        return (self.eos - self.bos) if (self.bos and self.eos) else len(self.token) if self.token else -1
+
 
 # Functions to complete Token object params
 def annotate(data: list[list[Token]], otag: str = "O") -> list[list[Token]]:

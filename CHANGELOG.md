@@ -4,10 +4,11 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## Aligner
 - added aligner methods and tests
+- added `annotation_transfer.md` into `docs`
 - updated token with magic methods `__len__` and `__contains__`
+- updated token `update` to support `dict` of params
 
 ## Unreleased
-
 - updated README.md
 - added CHANGELOG.md
 - added `bos` and `eos` attributes to `Chunk` and `Token` to hold character indices

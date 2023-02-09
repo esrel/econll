@@ -9,6 +9,77 @@ __version__ = "0.1.0"
 from econll.tokens import Token
 
 
+def isa_text(tokens: list[str | Token]) -> bool:
+    """
+    check if list of tokens is list of strings
+    :param tokens: list of tokens
+    :type tokens: list
+    :return:
+    :rtype: bool
+    """
+    return all([type(token) is str for token in tokens])
+
+
+def get_text(tokens: list[str | Token]) -> list[str]:
+    """
+    get list of token texts from a list of Token objects
+    :param tokens: list of tokens
+    :type tokens: list
+    :return:
+    :rtype: list
+    """
+    return tokens if isa_text(tokens) else [token.token for token in tokens]
+
+
+def set_text(tokens: list[Token], values: list[str]) -> list[Token]:
+    """
+    update ``token`` attribute of a ``Token``
+    :param tokens: Token objects
+    :type tokens: list
+    :param values: string tokens
+    :type values: list
+    :return:
+    :rtype: list
+    """
+    if len(tokens) != len(values):
+        raise ValueError(f"Length Mismatch: {len(tokens)} != {len(values)}")
+
+    return [token.update("token", value) for token, value in zip(tokens, values)]
+
+
+def tokenize(text: str, tokens: list[str] = None, cased: bool = False) -> list[Token]:
+    """
+    'tokenize' text & tokens into Token list
+
+    str.find() produces -1 as output if it is unable to find the substring
+    str.index() throws a ValueError exception
+
+    .. note:: whitespace tokenizes ``text`` if no ``tokens`` are provided
+
+    :param text: input string
+    :type text: str
+    :param tokens: list of tokens
+    :type tokens: list
+    :param cased: cased string check or not; optional; defaults to False
+    :type cased: bool
+    :return:
+    :rtype: list
+    """
+    text = text.lower() if not cased else text
+    tokens = text.strip().split() if tokens is None else [token.lower() for token in tokens] if not cased else tokens
+
+    if not check_text(text, tokens):
+        raise ValueError(f"tokens do not align to text: {tokens} vs. '{text}'")
+
+    output = []
+    pointer = 0
+    for i, token in enumerate(tokens):
+        idx = text.index(token, pointer)
+        pointer = idx + len(token)
+        output.append(Token(token, index=i, bos=idx, eos=pointer))
+    return output
+
+
 # token processing utilities
 def clean_tokens(tokens: list[str], marker: str = None, mapper: dict[str, str] = None) -> list[str]:
     """
@@ -56,9 +127,9 @@ def check_text(text: str, tokens: list[str], cased: bool = False) -> bool:
     return string_text == tokens_text
 
 
-def index_tokens(text: str, tokens: list[str] = None, cased: bool = False) -> list[Token]:
+def index_tokens(text: str, tokens: list[str | Token] = None, cased: bool = False) -> list[Token]:
     """
-    index tokens to text
+    index tokens to text: add ``bos`` & ``eos`` values
 
     str.find() produces -1 as output if it is unable to find the substring
     str.index() throws a ValueError exception
@@ -74,82 +145,90 @@ def index_tokens(text: str, tokens: list[str] = None, cased: bool = False) -> li
     :return:
     :rtype: list
     """
-    text = text.lower() if not cased else text
-    tokens = text.strip().split() if tokens is None else [token.lower() for token in tokens] if not cased else tokens
+    if tokens is None or isa_text(tokens):
+        return tokenize(text, tokens, cased=cased)
 
-    if not check_text(text, tokens):
-        raise ValueError(f"tokens do not align to text: {tokens} vs. '{text}'")
+    aligned_tokens = tokenize(text, get_text(tokens), cased=cased)
 
-    output = []
-    pointer = 0
-    for i, token in enumerate(tokens):
-        idx = text.index(token, pointer)
-        pointer = idx + len(token)
-        output.append(Token(token, index=i, bos=idx, eos=pointer))
-    return output
+    return [token.update({"bos": other.bos, "eos": other.eos}) for token, other in zip(tokens, aligned_tokens)]
 
 
 # token-to-token alignment methods
-def align_tokens(source: list[Token], target: list[Token]) -> list[tuple[list[int], list[int]]]:
+def align(source: list[Token], target: list[Token]) -> list[tuple[list[int], list[int]]]:
     """
-    align source and target tokens to create an alignment
-    (assumes that source and target are indexed to the same text)
-    :param source: source tokens
-    :type source: list
-    :param target: target tokens
-    :type target: list
+    compute alignment from bos & eos indices
+    :param source:
+    :param target:
     :return:
-    :rtype: dict
     """
-    # tokenization is identical
-    if [token.token for token in source] == [token.token for token in target]:
-        return [([i], [i]) for i in range(len(source))]
+    src_bos, src_eos = list(map(list, zip(*[(token.bos, token.eos) for token in source])))
+    tgt_bos, tgt_eos = list(map(list, zip(*[(token.bos, token.eos) for token in target])))
 
-    src2tgt = [([src.index], [tgt.index for tgt in target if tgt in src]) for src in source]
-    src2tgt_alignment = [(src, tgt) for src, tgt in src2tgt if tgt]
+    aln_bos = sorted(list(set(src_bos).intersection(set(tgt_bos))))
+    aln_eos = sorted(list(set(src_eos).intersection(set(tgt_eos))))
 
-    # source to target alignment is complete
-    if len(src2tgt) == len(src2tgt_alignment) and alignment_is_valid(src2tgt_alignment, source, target):
-        return sorted(src2tgt_alignment)
+    assert len(aln_bos) == len(aln_eos)  # there should be identical number of bos & eos
 
-    tgt2src = [([tgt.index], [src.index for src in source if src in tgt]) for tgt in target]
-    tgt2src_alignment = [(src, tgt) for tgt, src in tgt2src if src]
+    alignment = [([src.index for src in source if (src.bos >= bos and src.eos <= eos)],
+                  [tgt.index for tgt in target if (tgt.bos >= bos and tgt.eos <= eos)])
+                 for bos, eos in zip(aln_bos, aln_eos)]
 
-    # target to source alignment is complete
-    if len(tgt2src) == len(tgt2src_alignment) and alignment_is_valid(tgt2src_alignment, source, target):
-        return sorted(tgt2src_alignment)
-
-    # remainders
-    src2tgt_unmatched = [([], [idx]) for src, tgt in src2tgt_alignment for idx in tgt if len(tgt) > 1]
-    tgt2src_unmatched = [([idx], []) for src, tgt in tgt2src_alignment for idx in src if len(src) > 1]
-
-    src2tgt_remainder = [(src, tgt) for src, tgt in src2tgt
-                         if ((src, tgt) not in src2tgt_alignment and (src, tgt) not in tgt2src_unmatched)]
-    tgt2src_remainder = [(src, tgt) for tgt, src in tgt2src
-                         if ((src, tgt) not in tgt2src_alignment and (src, tgt) not in src2tgt_unmatched)]
-
-    alignment = sorted(src2tgt_alignment + [pair for pair in tgt2src_alignment if pair not in src2tgt_alignment])
-
-    if not src2tgt_remainder and not tgt2src_remainder and alignment_is_valid(alignment, source, target):
-        return sorted(alignment)
-
-    # should not happen
-    raise ValueError(f"partial alignment: {alignment}")
+    return alignment
 
 
-def alignment_is_valid(alignment: list[tuple[list[int], list[int]]],
-                       source: list[Token],
-                       target: list[Token]
-                       ) -> bool:
+def check_alignment(alignment: list[tuple[list[int], list[int]]],
+                    source: list[Token],
+                    target: list[Token]
+                    ) -> bool:
     """
-    validate alignment
+    check if alignment is complete (i.e. all source and target tokens and characters are accounted for)
     :param alignment: alignment as a list of tuples
     :type alignment: list
     :param source: source tokens
     :type source: list
     :param target: target tokens
     :type target: list
+    :return:
+    :rtype: bool
     """
-    source_index = [idx for src, tgt in alignment for idx in src]
-    target_index = [idx for src, tgt in alignment for idx in tgt]
-    return True if len(source_index) == len(source) and len(target_index) == len(target) else False
+    token_coverage = (len([idx for src, tgt in alignment for idx in src]) == len(source) and
+                      len([idx for src, tgt in alignment for idx in tgt]) == len(target))
+    chars_coverage = all(check_coverage(src, tgt, source, target) for src, tgt in alignment)
+    return all([token_coverage, chars_coverage])
+
+
+def check_coverage(source_index: list[int],
+                   target_index: list[int],
+                   source: list[Token],
+                   target: list[Token]
+                   ) -> bool:
+    """
+    check coverage of the alignment pair
+    :param source_index: source token indices
+    :type source_index: int
+    :param target_index: target token indices
+    :type target_index: int
+    :param source: source tokens
+    :type source: list
+    :param target: target tokens
+    :type target: list
+    :return:
+    :rtype: bool
+    """
+    source_chars = [x for idx in source_index for x in list(range(source[idx].bos, source[idx].eos))]
+    target_chars = [x for idx in target_index for x in list(range(target[idx].bos, target[idx].eos))]
+    return sorted(source_chars) == sorted(target_chars)
+
+
+def check_spans(source: list[Token], target: list[Token]) -> bool:
+    """
+    check if source and target have identical tokens (bos & eos indices)
+    :param source: source tokens
+    :type source: list
+    :param target: target tokens
+    :type target: list
+    :return:
+    :rtype: bool
+    """
+    return False if len(source) != len(target) else \
+        all((src.bos == tgt.bos and src.eos == tgt.eos) for src, tgt in zip(source, target))

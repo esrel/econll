@@ -2,7 +2,7 @@ import pytest
 
 from econll.aligner import clean_tokens
 from econll.aligner import check_text, index_tokens
-from econll.aligner import align_tokens
+from econll.aligner import align
 
 
 @pytest.fixture
@@ -163,18 +163,18 @@ def test_index_tokens(text_data, tokens_spacy,
         [index_tokens(text, tokens) for text, tokens in zip(text_data, tokens_wordpiece)]
 
 
-def test_align_tokens(text_data, tokens_spacy,
-                      tokens_wordpiece, tokens_treebank,
-                      tokens_wordpiece_clean, tokens_treebank_clean):
+def test_align(text_data, tokens_spacy,
+               tokens_wordpiece, tokens_treebank,
+               tokens_wordpiece_clean, tokens_treebank_clean):
 
     for target_tokens in [tokens_spacy, tokens_wordpiece_clean, tokens_treebank_clean]:
-        [align_tokens(index_tokens(source), index_tokens(source, target))
+        [align(index_tokens(source), index_tokens(source, target))
          for source, target in zip(text_data, target_tokens)]
 
     for target_tokens in [tokens_wordpiece, tokens_treebank]:
         # will fail at indexing
         with pytest.raises(ValueError):
-            [align_tokens(index_tokens(source), index_tokens(source, target))
+            [align(index_tokens(source), index_tokens(source, target))
              for source, target in zip(text_data, target_tokens)]
 
     # cross-checks (including to itself)
@@ -185,4 +185,33 @@ def test_align_tokens(text_data, tokens_spacy,
             for text, src, tgt in zip(text_data, source_tokens, target_tokens):
                 src_tokens = index_tokens(text, src)
                 tgt_tokens = index_tokens(text, tgt)
-                align_tokens(src_tokens, tgt_tokens)
+                align(src_tokens, tgt_tokens)
+
+
+def test_align_syn():
+    txt = "aaa bbb ccc"
+    src = ['aa', 'a', 'bb', 'b', 'cc', 'c']
+    tgt = ['a', 'aa', 'b', 'bb', 'c', 'cc']
+
+    txt_toks = index_tokens(txt)
+    src_toks = index_tokens(txt, src)
+    tgt_toks = index_tokens(txt, tgt)
+
+    data = {"txt": txt_toks, "src": src_toks, "tgt": tgt_toks}
+    alns = {
+        "txt2txt": [([0], [0]), ([1], [1]), ([2], [2])],
+        "txt2src": [([0], [0, 1]), ([1], [2, 3]), ([2], [4, 5])],
+        "txt2tgt": [([0], [0, 1]), ([1], [2, 3]), ([2], [4, 5])],
+
+        "src2src": [([0], [0]), ([1], [1]), ([2], [2]), ([3], [3]), ([4], [4]), ([5], [5])],
+        "src2txt": [([0, 1], [0]), ([2, 3], [1]), ([4, 5], [2])],
+        "src2tgt": [([0, 1], [0, 1]), ([2, 3], [2, 3]), ([4, 5], [4, 5])],
+
+        "tgt2tgt": [([0], [0]), ([1], [1]), ([2], [2]), ([3], [3]), ([4], [4]), ([5], [5])],
+        "tgt2txt": [([0, 1], [0]), ([2, 3], [1]), ([4, 5], [2])],
+        "tgt2src": [([0, 1], [0, 1]), ([2, 3], [2, 3]), ([4, 5], [4, 5])],
+    }
+
+    for s, s_toks in data.items():
+        for t, t_toks in data.items():
+            assert align(s_toks, t_toks) == alns.get(f"{s}2{t}", [])

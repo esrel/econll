@@ -47,7 +47,7 @@ class Token:
     def tag(self):
         return f"{self.affix}-{self.label}" if self.label else self.affix
 
-    def update(self, param: str, value: Param) -> 'Token':
+    def update(self, param: str | dict[str, Param], value: Param = None) -> 'Token':
         """
         returns copy of itself with the ``param`` updated with ``value``
         :param param: Token attribute
@@ -57,9 +57,9 @@ class Token:
         :return: new Token object
         :rtype: Token
         """
-        token = Token(**asdict(self))
-        setattr(token, param, value)
-        return token
+        token_params = asdict(self)
+        other_params = {param: value} if type(param) is str else param
+        return Token(**{k: other_params.get(k, v) for k, v in token_params.items()})
 
     def convert(self, scheme: str) -> 'Token':
         """

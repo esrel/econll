@@ -9,7 +9,7 @@ __version__ = "0.1.3"
 from collections import defaultdict
 from dataclasses import dataclass, asdict
 
-from econll.tokens import Token
+from econll.chunks import Token
 
 
 @dataclass

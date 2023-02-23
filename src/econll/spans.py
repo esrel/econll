@@ -4,10 +4,15 @@ Methods to Make & Work with Spans
 Shared Params:
 
 Methods:
-    - clean_tokens -- preprocess tokens removing tokenization marking & restoring substitutions
-    - scope_tokens -- get begin & end of span character indices w.r.t. to source text
+    # main
+    - align        -- compute alignment for two list of tokens
+    - consolidate  -- consolidate spans with pre-defined scores
 
-    - align_spans  -- compute alignment between two lists of tokens over the same text string
+    # token pre-processing
+    - clean_tokens -- preprocess tokens removing tokenization marking & restoring substitutions
+
+    - create_spans -- get begin & end of span character indices w.r.t. to source text
+    - align_spans  -- compute alignment between two lists of spans
 
     # output indices
     - select_spans -- select spans within bos & eos indices
@@ -22,6 +27,74 @@ __version__ = "0.1.0"
 
 
 from itertools import count
+
+
+# API functions
+
+def align(source: str | list[str],
+          target: str | list[str],
+          tokens: str | list[str] = None
+          ) -> list[tuple[list[int], list[int]]]:
+    """
+    align source to target using tokens for token boundaries, if provided
+    :param source: tokens to align on
+    :type source: str | list[str]
+    :param target: tokens to align
+    :type target: str | list[str]
+    :param tokens: tokens for boundaries, defaults to None
+    :type tokens: str | list[str], optional
+    :return: token-level alignment
+    :rtype: list[tuple[list[int], list[int]]]
+    """
+    if source == target:
+        return [([i], [i]) for i in range(len(source))]
+
+    tokens = source if tokens is None else tokens
+    tokens = tokens if isinstance(tokens, str) else " ".join(tokens)
+
+    source = source if isinstance(source, list) else source.split()
+    target = target if isinstance(target, list) else target.split()
+
+    src_spans = create_spans(source, tokens)
+    tgt_spans = create_spans(target, tokens)
+    aln_spans = align_spans(src_spans, tgt_spans)
+
+    src_index = [select_spans(src_spans, bos, eos) for bos, eos in aln_spans]
+    tgt_index = [select_spans(tgt_spans, bos, eos) for bos, eos in aln_spans]
+
+    # .. todo:: check for redundancy
+    assert len(source) == len([idx for seq in src_index for idx in seq]), f"partial source coverage: {src_index}"
+    assert len(target) == len([idx for seq in tgt_index for idx in seq]), f"partial target coverage: {tgt_index}"
+
+    return list(zip(src_index, tgt_index))
+
+
+def consolidate(spans: list[tuple[int, int]],
+                scores: list = None,
+                priors: list = None,
+                length: bool = True
+                ) -> list[int]:
+    """
+    CORE METHOD
+    consolidate ``spans`` w.r.t. ``scores`` (reduce to a non-overlapping set of spans)
+
+    Tie Breaking via sorting: prior > score > length > order (w.r.t. ``spans``)
+
+    :param spans: list of spans (potentially overlapping)
+    :type spans: list[tuple[int, int]]
+    :param scores: span scores, defaults to None
+    :type scores: list
+    :param priors: span priors (priority), defaults to None
+    :type priors: list
+    :param length: if to use span length for tie-breaking, defaults to True
+    :type length: bool, optional
+    :return: spans indices (non-overlapping)
+    :rtype: list[int]
+    """
+    criteria = [] if length is False else [[(eos - bos) for eos, bos in spans]]
+    criteria = criteria if scores is None else scores + criteria
+    criteria = criteria if priors is None else priors + criteria
+    return consolidate_spans(spans, *criteria)
 
 
 # tokens -> tokens
@@ -52,7 +125,7 @@ def clean_tokens(tokens: list[str],
 
 
 # tokens -> spans
-def scope_tokens(tokens: list[str], source: str) -> list[tuple[int, int]]:
+def create_spans(tokens: list[str], source: str) -> list[tuple[int, int]]:
     """
     CORE METHOD
     compute spans (begin & end indices) for ``tokens`` on a ``source`` text

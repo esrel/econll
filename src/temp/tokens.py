@@ -22,7 +22,7 @@ class Token:
     affix: str = None  # scheme affix: IOB(ES) prefix or suffix; one of {I, O, B, E, S}
     label: str = None  # chunk label
 
-    index: int = None  # within block index
+    idx: int = None  # within block index
 
     # chunk flags
     boc: bool = None  # chunk begin

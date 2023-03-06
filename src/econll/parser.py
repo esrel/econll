@@ -37,6 +37,10 @@ Functions:
     - relabel -- remap labels
     - reaffix -- remap affixes to IOBES scheme
     - convert -- convert affixes to a target scheme (among the supported)
+
+    # IOB1 & IOE1 support functions
+    - isa_coc -- check if label-affix pair is a chunk-change token
+    - get_coc_boc/get_coc_eoc -- check if a label-affix pair begins/ends a chunk & isa_coc
 """
 
 __author__ = "Evgeny A. Stepanov"

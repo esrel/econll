@@ -41,6 +41,11 @@ Functions:
     # IOB1 & IOE1 support functions
     - isa_coc -- check if label-affix pair is a chunk-change token
     - get_coc_boc/get_coc_eoc -- check if a label-affix pair begins/ends a chunk & isa_coc
+
+    # checks
+    - check_affix  -- check that all affixes are from IOBES
+    - check_scheme -- check that all affixes are from IOBES with input as label-affix pairs
+    - check_morphs -- check that all affixes are from IOBES with input as affix-affix mapping
 """
 
 __author__ = "Evgeny A. Stepanov"

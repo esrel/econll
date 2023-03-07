@@ -287,3 +287,24 @@ def data_schemes() -> dict[str, list[list[str]]]:
             ['O', 'O', 'O', 'O', 'O', 'I-Y', 'I-Y', 'I-Y', 'O']
         ]
     }
+
+
+@pytest.fixture
+def data_chunks() -> list[list[tuple[str, int, int]]]:
+    """
+    chunks from data
+    :return: chunks
+    :rtype: list[list[tuple[str, int, int]]]
+    """
+    return [
+        [],
+        [('X', 0, 1)],
+        [('X', 0, 3)],
+        [('X', 1, 3)],
+        [('X', 1, 2), ('X', 2, 3), ('X', 4, 5)],
+        [('X', 1, 3), ('Y', 4, 5)],
+        [('X', 2, 3), ('Y', 4, 5)],
+        [('X', 2, 4), ('Y', 5, 7)],
+        [('X', 2, 4), ('Y', 4, 6)],
+        [('Y', 5, 8)]
+    ]

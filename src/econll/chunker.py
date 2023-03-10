@@ -14,7 +14,11 @@ Functions:
                                    expand label to a list of target size
     - reduce_affix/expand_affix -- reduce affix list to a single value
                                    expand affix to a list of target size
-    - gen_chunk_affix           -- generate affix list of a target size for a chunk
+    - gen_iobes_affix           -- generate a single IOBES scheme affix w.r.t. boc & eoc flags
+    - gen_chunk_affix           -- generate an affix list of a target size for a chunk
+
+    # checks
+    - isa_chunk                 -- check if a sequence of affixes is valid
 
 """
 
@@ -34,6 +38,7 @@ from econll.parser import parse, get_boc, get_eoc, gen_affix
 Chunk = tuple[str, int, int]
 
 
+# label-affix pairs to chunks
 def get_chunks(data: list[tuple[Label, Affix]]) -> list[Chunk]:
     """
     get list of chunks as
@@ -44,7 +49,10 @@ def get_chunks(data: list[tuple[Label, Affix]]) -> list[Chunk]:
     """
     chunks: list[Chunk] = []
     bos = 0
-    for i, ((label, _), boc, eoc) in enumerate(zip(data, get_boc(data), get_eoc(data), strict=True)):
+    for i, ((label, _), boc, eoc) in enumerate(zip(data,
+                                                   get_boc(data),
+                                                   get_eoc(data),
+                                                   strict=True)):
         if boc and eoc:
             chunks.append((label, i, (i + 1)))
         elif boc and not eoc:
@@ -85,39 +93,41 @@ def expand_label(data: Label, size: int) -> list[Label]:
 def reduce_affix(data: list[Affix]) -> Affix:
     """
     reduce affix list to a single value
-
-    strategy: 'O' if 'O' in data else
-
-    :param data: labels
+    :param data: affixes
     :type data: list[str]
-    :return: label
+    :return: affix
     :rtype: str
     """
-    label: str = "_"
-    scheme: str = "IOBES"
-
-    if not data or "O" in data:
-        return "O"
-
-    boc = data[0] in ["B", "S"]
-    eoc = data[-1] in ["E", "S"]
-    return gen_affix(label, boc, eoc, scheme)
+    return ("O" if not isa_chunk(data)
+            else "S" if data == ["S"]
+            else gen_iobes_affix(data[0] == "B", data[-1] == "E"))
 
 
 def expand_affix(data: Affix, size: int) -> list[Label]:
     """
     expand affix to target size
-
-    :param data: label
+    :param data: affix
     :type data: str | None
     :param size: expansion length
     :type size: int
-    :return: labels
+    :return: affixes
     :rtype: list[str | None]
     """
-    boc = data in ["B", "S"]
-    eoc = data in ["E", "S"]
-    return gen_chunk_affix(boc, eoc, size)
+    return (["O"] * size if data == "O" else
+            gen_chunk_affix(data in {"B", "S"}, data in {"E", "S"}, size))
+
+
+def gen_iobes_affix(boc: bool, eoc: bool) -> Affix:
+    """
+    generate IOBES affix from boc & eoc flags
+    :param boc: beginning-of-chunk flag
+    :type boc: bool
+    :param eoc: end-of-chunk flag
+    :type eoc: bool
+    :return: affix
+    :rtype: str
+    """
+    return gen_affix("_", boc, eoc, "IOBES")
 
 
 def gen_chunk_affix(boc: bool, eoc: bool, num: int) -> list[Affix]:
@@ -132,17 +142,39 @@ def gen_chunk_affix(boc: bool, eoc: bool, num: int) -> list[Affix]:
     :return: token affix
     :rtype: list[str]
     """
-    label: str = "_"
-    scheme: str = "IOBES"
     return (
         [] if num < 1 else
-        [gen_affix(label, boc, eoc, scheme)] if num == 1 else
+        [gen_iobes_affix(boc, eoc)] if num == 1 else
         (
-                [gen_affix(label, boc, False, scheme)] +
-                [gen_affix(label, False, False, scheme)] * (num - 2) +
-                [gen_affix(label, False, eoc, scheme)]
+                [gen_iobes_affix(boc, False)] +
+                [gen_iobes_affix(False, False)] * (num - 2) +
+                [gen_iobes_affix(False, eoc)]
         )
     )
+
+
+# checks
+def isa_chunk(affix_list: list[Affix]) -> bool:
+    """
+    check if a sequence of affixes belongs to a single valid chunk
+    (affix_list is a full or a partial chunk affix list)
+
+    valid patterns:
+        - S
+        - B? I* E?
+
+    :param affix_list: sequence of affixes
+    :type affix_list: list[str]
+    :return: check truth value
+    :rtype: bool
+    """
+    flag = False
+    flag = True if len(affix_list) == 1 and affix_list[0] in {"I", "B", "E", "S"} else flag
+    flag = True if (len(affix_list) > 1 and
+                    affix_list[0] in {"I", "B"} and
+                    affix_list[-1] in {"I", "E"} and
+                    all(affix == "I" for affix in affix_list[1:-1])) else flag
+    return flag
 
 
 # API Functions

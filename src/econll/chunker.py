@@ -48,7 +48,7 @@ def get_chunks(data: list[tuple[Label, Affix]]) -> list[Chunk]:
     :rtype: list[tuple[str, int, int]]
     """
     chunks: list[Chunk] = []
-    bos = 0
+    bos: int = 0
     for i, ((label, _), boc, eoc) in enumerate(zip(data,
                                                    get_boc(data),
                                                    get_eoc(data),
@@ -168,7 +168,7 @@ def isa_chunk(affix_list: list[Affix]) -> bool:
     :return: check truth value
     :rtype: bool
     """
-    flag = False
+    flag: bool = False
     flag = True if len(affix_list) == 1 and affix_list[0] in {"I", "B", "E", "S"} else flag
     flag = True if (len(affix_list) > 1 and
                     affix_list[0] in {"I", "B"} and

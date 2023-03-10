@@ -290,6 +290,39 @@ def data_schemes() -> dict[str, list[list[str]]]:
 
 
 @pytest.fixture
+def data_hyps():
+    """
+    hypotheses (with errors)
+    correct tokens 40/50
+    correct blocks on token-level: 2/10
+    correct blocks on chunk-level: 3/10
+    :return:
+    """
+    return [
+        # N/A
+        ['O'],
+        # wrong BOC & label
+        ['I-Y', 'O'],
+        # span is shorter
+        ['B-X', 'O', 'O'],
+        # span is longer
+        ['O', 'B-X', 'I-X', 'I-X'],
+        # 2 spans are merged
+        ['O', 'B-X', 'I-X', 'O', 'O'],
+        # span is split into 2
+        ['O', 'B-X', 'B-X', 'O', 'B-Y'],
+        # missed span + extra span
+        ['O', 'O', 'B-X', 'O', 'O', 'B-Y'],
+        # N/A
+        ['O', 'O', 'B-X', 'I-X', 'O', 'B-Y', 'I-Y'],
+        # wrong BOC
+        ['O', 'O', 'B-X', 'I-X', 'I-Y', 'I-Y', 'O', 'O'],
+        # N/A
+        ['O', 'O', 'O', 'O', 'O', 'B-Y', 'I-Y', 'I-Y', 'O'],
+    ]
+
+
+@pytest.fixture
 def data_chunks() -> list[list[tuple[str, int, int]]]:
     """
     chunks from data

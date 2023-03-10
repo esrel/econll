@@ -7,6 +7,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - added `annotation_transfer.md` into `docs`
 - updated token with magic methods `__len__` and `__contains__`
 - updated token `update` to support `dict` of params
+- added IOB1 & IOE1 support
 
 ## Unreleased
 - updated README.md

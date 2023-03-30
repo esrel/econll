@@ -41,8 +41,8 @@ Chunk = tuple[str, int, int]
 # label-affix pairs to chunks
 def get_chunks(data: list[tuple[Label, Affix]]) -> list[Chunk]:
     """
-    get list of chunks as
-    :param data: data as list of lists of Tokens
+    get chunks from a sequence of label-affix pairs
+    :param data: sequence of label-affix pairs
     :type data: list[tuple[str | None, str]]
     :return: chunks
     :rtype: list[tuple[str, int, int]]
@@ -103,7 +103,7 @@ def reduce_affix(data: list[Affix]) -> Affix:
             else gen_iobes_affix(data[0] == "B", data[-1] == "E"))
 
 
-def expand_affix(data: Affix, size: int) -> list[Label]:
+def expand_affix(data: Affix, size: int) -> list[Affix]:
     """
     expand affix to target size
     :param data: affix
@@ -189,3 +189,18 @@ def chunk(data: list[str], **kwargs) -> list[Chunk]:
     """
     pairs = parse(data, **kwargs)
     return get_chunks(pairs)
+
+
+def _chunk(data: list[tuple[str | None, str]]) -> list[tuple[str, int, int]]:
+    """
+    extract chunks from a sequence of label-affix pairs
+    :param data: a sequence a label-affix pairs
+    :type data: list[tuple[str | None, str]]
+    :return: chunks
+    :rtype: list[tuple[str, int, int]]
+    """
+    bos = [i for i, boc in enumerate(get_boc(data)) if boc]
+    eos = [i for i, eoc in enumerate(get_eoc(data)) if eoc]
+    lbl = [data[i][0] for i in bos]
+
+    return [(y, b, e + 1) for y, b, e in zip(lbl, bos, eos, strict=True)]

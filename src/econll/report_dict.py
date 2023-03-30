@@ -52,9 +52,9 @@ def format_cell(value: str | int | float,
     :return: formatted string
     :rtype: str
     """
-    if type(value) is int:
+    if isinstance(value, int):
         template = "{:{align}{width}d}"
-    elif type(value) is float:
+    elif isinstance(value, float):
         template = "{:{align}#{width}.{digit}f}"
     else:
         template = "{:{align}{width}s}"
@@ -122,8 +122,8 @@ def format_header(str_width: int = 10, num_width: int = 6, int_width: int = 6) -
     return header
 
 
-def print_table(label_scores: dict[str, dict[str, float]],
-                label_report: dict[str, dict[str, int]],
+def print_table(class_scores: dict[str, dict[str, float]],
+                class_report: dict[str, dict[str, int]],
                 total_scores: dict[str, dict[str, float]] = None,
                 total_report: dict[str, dict[str, int]] = None,
                 title: str = None,
@@ -132,10 +132,10 @@ def print_table(label_scores: dict[str, dict[str, float]],
                 ) -> str:
     """
     print evaluation report as a table (string)
-    :param label_scores: label-level scores
-    :type label_scores: dict
-    :param label_report: label-level reports
-    :type label_report: dict
+    :param class_scores: label-level scores
+    :type class_scores: dict
+    :param class_report: label-level reports
+    :type class_report: dict
     :param total_scores: average scores
     :type total_scores: dict
     :param total_report: sum of stats report
@@ -150,23 +150,23 @@ def print_table(label_scores: dict[str, dict[str, float]],
     :rtype: tuple
     """
     # check total
-    total_scores = {} if total_scores is None else total_scores
-    total_report = {} if total_report is None else total_report
+    total_scores = total_scores or {}
+    total_report = total_report or {}
 
     # set title
-    title = "Evaluation Report" if not title else title
+    title = title or "Evaluation Report"
 
     # set widths
     widths = dict(zip(["str_width", "num_width", "int_width"],
-                      compute_widths(label_scores, label_report, digits=digits)))
+                      compute_widths(class_scores, class_report, digits=digits)))
 
     # format table content
     header_row = format_header(**widths)
-    label_rows = format_rows(label_scores, label_report, digits=digits, **widths)
+    class_rows = format_rows(class_scores, class_report, digits=digits, **widths)
     total_rows = format_rows(total_scores, total_report, digits=digits, **widths)
 
     # format table
-    table_rows = [colsep.join(header_row)] + [""] + [colsep.join(row) for row in label_rows]
+    table_rows = [colsep.join(header_row)] + [""] + [colsep.join(row) for row in class_rows]
 
     if total_scores:
         table_rows.extend([""])
@@ -198,8 +198,8 @@ def print_value(value: int | float,
     """
     min_str_width = 10
 
-    title = "Metric" if title is None else title
-    notes = "" if notes is None else notes
+    title = title or "Metric"
+    notes = notes or ""
 
     str_width = max(min_str_width, len(title))
     num_width = digits + 2
@@ -207,7 +207,10 @@ def print_value(value: int | float,
 
     title_str = format_cell(title, width=str_width)
     notes_str = format_cell(notes, width=str_width) if notes else ""
-    value_str = format_cell(value, width=(int_width if type(value) is int else num_width), align=">", digits=digits)
+    value_str = format_cell(value,
+                            width=(int_width if isinstance(value, int) else num_width),
+                            align=">",
+                            digits=digits)
 
     print_str = colsep.join([title_str, value_str])
     print_str = print_str + " " + notes_str if notes_str else print_str

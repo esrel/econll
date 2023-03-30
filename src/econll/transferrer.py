@@ -6,9 +6,7 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from econll.tokens import Token, Param
-from econll.aligner import align_tokens
-
+from temp.tokens import Token, Param
 
 Data = Token | list[Token] | list[list[Token]]
 Prop = Param | list[Param] | list[list[Param]]

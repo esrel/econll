@@ -26,7 +26,7 @@ Functions:
 __author__ = "Evgeny A. Stepanov"
 __email__ = "stepanov.evgeny.a@gmail.com"
 __status__ = "dev"
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
 from functools import partial
@@ -35,11 +35,11 @@ from functools import partial
 # Utility Functions
 def split(data: list[list[tuple[str, ...]]]) -> tuple[list[list[str]], ...]:
     """
-    split list of lists of tuples into lists of list of strings
-    :param data: data as list of lists of tuples
+    split data into columns
+    :param data: data
     :type data: list[list[tuple[str, ...]]]
-    :return: data as list of lists of strings
-    :rtype: tuple[list[list[str]], ...
+    :return: split data
+    :rtype: tuple[list[list[str]], ...]
     """
     return tuple(map(list, zip(*[tuple(map(list, zip(*block))) for block in data])))
 
@@ -47,9 +47,9 @@ def split(data: list[list[tuple[str, ...]]]) -> tuple[list[list[str]], ...]:
 def merge(*data: list[list[str]]) -> list[list[tuple[str, ...]]]:
     """
     merge nested lists (in the order of arguments)
-    :param data: data as list of lists of string
+    :param data: data
     :type data: list[list[str]]
-    :return: data as list of lists of tuples
+    :return: merged data
     :rtype: list[list[tuple[str, ...]]]
     """
     return [list(zip(*blocks, strict=True)) for blocks in zip(*data, strict=True)]
@@ -57,12 +57,12 @@ def merge(*data: list[list[str]]) -> list[list[tuple[str, ...]]]:
 
 def get_field(data: list[list[tuple[str, ...]]], field: int = None) -> list[list[str]]:
     """
-    get a column (field) from a CoNLL data (as list of lists of tuples)
-    :param data: data as list of lists of tuples
+    get a column (field) from data
+    :param data: data
     :type data: list[list[tuple[str, ...]]]
-    :param field: index of the field to get; optional; defaults to -1
-    :type field: int
-    :return: data as list of lists of strings
+    :param field: index of the field to get, defaults to -1
+    :type field: int, optional
+    :return: column
     :rtype: list[list[str]]
     """
     field = -1 if field is None else field
@@ -83,10 +83,9 @@ def check_block(block: list[tuple[str, ...]]) -> None:
 
 def validate(data: list[list[tuple[str, ...]]]) -> None:
     """
-    validate read CoNLL data
-    - check that all token tuples are of the same length
-    :param data: data as list of lists of tuples
-    :type data: list
+    validate loaded CoNLL data: check that all token tuples are of the same length
+    :param data: data
+    :type data: list[list[tuple[str, ...]]]
     """
     check_block([token for block in data for token in block])
 
@@ -96,8 +95,8 @@ def load(path: str,
          separator: str = "\t", boundary: str = "", docstart: str = "-DOCSTART-",
          ) -> list[list[tuple[str, ...]]]:
     """
-    load data in CoNLL format
-    :param path: path to data in conll format
+    load data from CoNLL format file
+    :param path: path to file to load
     :type path: str
     :param separator: field separator, defaults to "\t"
     :type separator: str, optional
@@ -105,7 +104,7 @@ def load(path: str,
     :type boundary: str, optional
     :param docstart: doc start string, defaults to "-DOCSTART-"
     :type docstart: str, optional
-    :return: data as list of lists of tuples
+    :return: loaded data
     :rtype: list[list[tuple[str, ...]]]
     """
     group: list[list[tuple[str, ...]]] = []  # list to hold block lists
@@ -135,10 +134,10 @@ def dump(data: list[list[tuple[str, ...]]],
          separator: str = "\t", boundary: str = ""
          ) -> None:
     """
-    dump data in CoNLL format
-    :param data: as blocks of Token objects, strings, or tuples of strings
-    :type data: list
-    :param path: path to data in conll format
+    dump CoNLL format data to a file
+    :param data: data to dump
+    :type data: list[list[tuple[str, ...]]]
+    :param path: path to file
     :type path: str
     :param separator: field separator, defaults to "\t"
     :type separator: str, optional
@@ -154,7 +153,7 @@ def dump(data: list[list[tuple[str, ...]]],
 
 
 # alias functions
-# assumes that token tuple has the following structures
+# assumes that token tuple has the following structure
 # (text, ..., tag)
 # (text, ..., ref_tag, hyp_tag)
 get_text = partial(get_field, field=0)

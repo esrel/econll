@@ -1,22 +1,14 @@
 """
-Functions for reading CoNLL-type Data
+data reading/writing & transformation functions
 
-Shared Params:
+functions:
+    - load/dump    -- load data from/dump data to a file
+    - split/merge  -- split into/merge from field lists
 
-Functions:
-    # main functions
-    - load/dump   -- load data from/dump data to a file
+    - check_fields -- check that block tokens have consistent number of fields
+    - get_field    -- get token field by index
 
-    # checks
-    - check_block -- check that block tokens have consistent number of fields
-    - validate    -- check that group tokens have consistent number of fields
-
-    # utility functions
-    - split       -- split group token tuples into lists
-    - merge       -- merge group token fields from lists
-    - get_field   -- get token field by index
-
-    # alias functions
+    # alias functions (to `get_field`)
     - get_text -- get token text (first column)
     - get_tags -- get token tags (last column)
     - get_hyps -- same as get_tags
@@ -32,65 +24,6 @@ __version__ = "0.2.0"
 from functools import partial
 
 
-# Utility Functions
-def split(data: list[list[tuple[str, ...]]]) -> tuple[list[list[str]], ...]:
-    """
-    split data into columns
-    :param data: data
-    :type data: list[list[tuple[str, ...]]]
-    :return: split data
-    :rtype: tuple[list[list[str]], ...]
-    """
-    return tuple(map(list, zip(*[tuple(map(list, zip(*block))) for block in data])))
-
-
-def merge(*data: list[list[str]]) -> list[list[tuple[str, ...]]]:
-    """
-    merge nested lists (in the order of arguments)
-    :param data: data
-    :type data: list[list[str]]
-    :return: merged data
-    :rtype: list[list[tuple[str, ...]]]
-    """
-    return [list(zip(*blocks, strict=True)) for blocks in zip(*data, strict=True)]
-
-
-def get_field(data: list[list[tuple[str, ...]]], field: int = None) -> list[list[str]]:
-    """
-    get a column (field) from data
-    :param data: data
-    :type data: list[list[tuple[str, ...]]]
-    :param field: index of the field to get, defaults to -1
-    :type field: int, optional
-    :return: column
-    :rtype: list[list[str]]
-    """
-    field = -1 if field is None else field
-    return [[token[field] for token in block] for block in data]
-
-
-# checks
-def check_block(block: list[tuple[str, ...]]) -> None:
-    """
-    check that block tokens have consistent number of fields
-    :param block: block to check
-    :type block: list[tuple[str, ...]]
-    :raise: ValueError
-    """
-    if len(set(list(map(len, block)))) > 1:
-        raise ValueError("Inconsistent Number of Fields!")
-
-
-def validate(data: list[list[tuple[str, ...]]]) -> None:
-    """
-    validate loaded CoNLL data: check that all token tuples are of the same length
-    :param data: data
-    :type data: list[list[tuple[str, ...]]]
-    """
-    check_block([token for block in data for token in block])
-
-
-# Reading/Writing (Loading/Dumping)
 def load(path: str,
          separator: str = "\t", boundary: str = "", docstart: str = "-DOCSTART-",
          ) -> list[list[tuple[str, ...]]]:
@@ -124,7 +57,7 @@ def load(path: str,
             else:
                 block.append(tuple(line.strip().split(separator)))
 
-        validate(group)
+        check_fields([token for block in group for token in block])
 
         return group
 
@@ -150,6 +83,53 @@ def dump(data: list[list[tuple[str, ...]]],
                 line = separator.join(token)
                 file.write(line + "\n")
             file.write(boundary + "\n")
+
+
+def split(data: list[list[tuple[str, ...]]]) -> tuple[list[list[str]], ...]:
+    """
+    split data into columns
+    :param data: data
+    :type data: list[list[tuple[str, ...]]]
+    :return: split data
+    :rtype: tuple[list[list[str]], ...]
+    """
+    return tuple(map(list, zip(*[tuple(map(list, zip(*block))) for block in data])))
+
+
+def merge(*data: list[list[str]]) -> list[list[tuple[str, ...]]]:
+    """
+    merge nested lists (in the order of arguments)
+    :param data: data
+    :type data: list[list[str]]
+    :return: merged data
+    :rtype: list[list[tuple[str, ...]]]
+    """
+    return [list(zip(*blocks, strict=True)) for blocks in zip(*data, strict=True)]
+
+
+def check_fields(tokens: list[tuple[str, ...]]) -> None:
+    """
+    check that block tokens have consistent number of fields
+    :param tokens: block of tokens to check
+    :type tokens: list[tuple[str, ...]]
+    :raise: ValueError
+    """
+    if len(set(list(map(len, tokens)))) > 1:
+        raise ValueError("Inconsistent Number of Fields!")
+
+
+def get_field(data: list[list[tuple[str, ...]]], field: int = None) -> list[list[str]]:
+    """
+    get a column (field) from data
+    :param data: data
+    :type data: list[list[tuple[str, ...]]]
+    :param field: index of the field to get, defaults to -1
+    :type field: int, optional
+    :return: column
+    :rtype: list[list[str]]
+    """
+    field = -1 if field is None else field
+    return [[token[field] for token in block] for block in data]
 
 
 # alias functions

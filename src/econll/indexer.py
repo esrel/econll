@@ -1,10 +1,10 @@
 """
 token indexing functions
 
-Functions:
+functions:
     - index        -- index tokens to source text (get begin & end indices)
 
-    - clean_tokens -- process tokens removing tokenization marking & restoring substitutions
+    - clean_tokens -- clean tokens removing tokenization marking & restoring substitutions
     - check_tokens -- check that two sequences are over the same white-space removed string
     - index_tokens -- index tokens to source text (get begin & end indices)
 """
@@ -47,13 +47,13 @@ def clean_tokens(tokens: list[str],
     e.g. BERT tokens for text 'esrel' - ['es', '##rel'] - are converted to ['es', 'rel']
 
     :param tokens: input tokens as a list of strings
-    :type tokens: list
+    :type tokens: list[str]
     :param marker: sub-word prefix marker; optional; defaults to ``None``
     :type marker: str
     :param mapper: token replacement mapping; optional; defaults to ``None``
-    :type mapper: dict
+    :type mapper: dict[str, str]
     :return: cleaned tokens
-    :rtype: list
+    :rtype: list[str]
     """
     tokens = tokens if marker is None else [token.removeprefix(marker) for token in tokens]
     tokens = tokens if mapper is None else [mapper.get(token, token) for token in tokens]

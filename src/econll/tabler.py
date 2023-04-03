@@ -1,29 +1,77 @@
 """
-Report Evaluation Table
+evaluation report functions
 
-Shared Params:
+functions:
+    - report -- prepare evaluation report as string
 
+    - compute_width -- compute cell widths for str, int & float values
+    - format_cell   -- format individual cell
+    - format_rows   -- format table rows
+    - format_header -- format table header
+
+shared params:
     - num_width -- width of a float value cell
     - int_width -- width of an integer value cell
     - str_width -- width of a string value cell
-
-Functions:
-
-    - compute_width
-
-    - format_cell
-    - format_rows
-    - format_header
-
-    - print_value
-    - print_table
-
 """
 
 __author__ = "Evgeny A. Stepanov"
 __email__ = "stepanov.evgeny.a@gmail.com"
 __status__ = "dev"
 __version__ = "0.1.3"
+
+
+def report(class_scores: dict[str, tuple[float, float, float]],
+           class_counts: dict[str, tuple[int, int, int]],
+           total_scores: dict[str, tuple[float, float, float]] = None,
+           total_counts: dict[str, tuple[int, int, int]] = None,
+           title: str = None,
+           digits: int = 4,
+           colsep: str = "\t"
+           ) -> str:
+    """
+    print evaluation report as a table (string)
+    :param class_scores: label-level scores
+    :type class_scores: dict[str, tuple[float, float, float]]
+    :param class_counts: label-level reports
+    :type class_counts: dict[str, tuple[int, int, int]]
+    :param total_scores: average scores
+    :type total_scores: dict[str, tuple[float, float, float]]
+    :param total_counts: sum of stats report
+    :type total_counts: dict[str, tuple[int, int, int]]
+    :param title: text to print above
+    :type title: str
+    :param digits: precision
+    :type digits: int
+    :param colsep: column separator, defaults to " " (space)
+    :type colsep: str, optional
+    :return: table
+    :rtype: str
+    """
+    # check total
+    total_scores = total_scores or {}
+    total_counts = total_counts or {}
+
+    # set title
+    title = title or "Evaluation Report"
+
+    # set widths
+    widths = dict(zip(["str_width", "num_width", "int_width"],
+                      compute_widths(class_scores, class_counts, digits=digits)))
+
+    # format table content
+    header_row = format_header(**widths)
+    class_rows = format_rows(class_scores, class_counts, digits=digits, **widths)
+    total_rows = format_rows(total_scores, total_counts, digits=digits, **widths)
+
+    # format table
+    table_rows = [colsep.join(header_row)] + [""] + [colsep.join(row) for row in class_rows]
+
+    if total_scores:
+        table_rows.extend([""])
+        table_rows.extend([colsep.join(row) for row in total_rows])
+
+    return "\n" + title + "\n\n" + "\n".join(table_rows) + "\n"
 
 
 def compute_widths(scores: dict[str, tuple[float, float, float]],
@@ -105,10 +153,10 @@ def format_rows(scores: dict[str, tuple[float, float, float]],
     :return: list of rows
     :rtype: list[list[str]]
     """
-    return [([format_cell(label, width=str_width)] +
+    return [([format_cell(y, width=str_width)] +
              [format_cell(v, width=num_width, align=">", digits=digits) for v in class_scores] +
-             [format_cell(v, width=int_width, align=">") for v in counts.get(label, {})])
-            for label, class_scores in sorted(scores.items())]
+             [format_cell(v, width=int_width, align=">") for v in counts.get(y, [])])
+            for y, class_scores in sorted(scores.items())]
 
 
 def format_header(str_width: int = 10, num_width: int = 6, int_width: int = 6) -> list[str]:
@@ -133,99 +181,3 @@ def format_header(str_width: int = 10, num_width: int = 6, int_width: int = 6) -
              [format_cell(v, width=int_width, align="^") for v in int_fields]
 
     return header
-
-
-def print_table(class_scores: dict[str, tuple[float, float, float]],
-                class_counts: dict[str, tuple[int, int, int]],
-                total_scores: dict[str, tuple[float, float, float]] = None,
-                total_counts: dict[str, tuple[int, int, int]] = None,
-                title: str = None,
-                digits: int = 4,
-                colsep: str = "\t"
-                ) -> str:
-    """
-    print evaluation report as a table (string)
-    :param class_scores: label-level scores
-    :type class_scores: dict[str, tuple[float, float, float]]
-    :param class_counts: label-level reports
-    :type class_counts: dict[str, tuple[int, int, int]]
-    :param total_scores: average scores
-    :type total_scores: dict[str, tuple[float, float, float]]
-    :param total_counts: sum of stats report
-    :type total_counts: dict[str, tuple[int, int, int]]
-    :param title: text to print above
-    :type title: str
-    :param digits: precision
-    :type digits: int
-    :param colsep: column separator, defaults to " " (space)
-    :type colsep: str, optional
-    :return: table
-    :rtype: str
-    """
-    # check total
-    total_scores = total_scores or {}
-    total_counts = total_counts or {}
-
-    # set title
-    title = title or "Evaluation Report"
-
-    # set widths
-    widths = dict(zip(["str_width", "num_width", "int_width"],
-                      compute_widths(class_scores, class_counts, digits=digits)))
-
-    # format table content
-    header_row = format_header(**widths)
-    class_rows = format_rows(class_scores, class_counts, digits=digits, **widths)
-    total_rows = format_rows(total_scores, total_counts, digits=digits, **widths)
-
-    # format table
-    table_rows = [colsep.join(header_row)] + [""] + [colsep.join(row) for row in class_rows]
-
-    if total_scores:
-        table_rows.extend([""])
-        table_rows.extend([colsep.join(row) for row in total_rows])
-
-    return "\n" + title + "\n\n" + "\n".join(table_rows) + "\n"
-
-
-def print_value(value: int | float,
-                title: str = None,
-                notes: str = None,
-                digits: int = 4,
-                colsep: str = ": "
-                ) -> str:
-    """
-    format value for printing
-    :param value: value to print
-    :type value: str | int | float
-    :param title: text to print to the left of value
-    :type title: str
-    :param notes: text to print to the right of value
-    :type notes: str
-    :param digits: precision
-    :type digits: int
-    :param colsep: column separator, defaults to " " (space)
-    :type colsep: str, optional
-    :return:
-    :rtype: str
-    """
-    min_str_width = 10
-
-    title = title or "Metric"
-    notes = notes or ""
-
-    str_width = max(min_str_width, len(title))
-    num_width = digits + 2
-    int_width = max(num_width, len(str(value)))
-
-    title_str = format_cell(title, width=str_width)
-    notes_str = format_cell(notes, width=str_width) if notes else ""
-    value_str = format_cell(value,
-                            width=(int_width if isinstance(value, int) else num_width),
-                            align=">",
-                            digits=digits)
-
-    print_str = colsep.join([title_str, value_str])
-    print_str = print_str + " " + notes_str if notes_str else print_str
-
-    return print_str

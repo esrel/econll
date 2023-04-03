@@ -1,11 +1,14 @@
-""" eCoNLL reporter tests """
+""" eCoNLL tabler tests """
 
-# .. note:: no tests for many functions, since they are not intended to be called
+# NOT TESTED:
+#   - report
+#   - compute_widths
+#   - format_rows
+#   - format_header
 
 import pytest
 
-from econll.reporter import format_cell
-from econll.reporter import print_value
+from econll.tabler import format_cell
 
 
 @pytest.mark.parametrize("value, width, align, digits, result", [
@@ -70,34 +73,3 @@ def test_format_cell_error(value: str,
     """
     with pytest.raises(ValueError):
         format_cell(value, width=width, align=align, digits=digits)
-
-
-@pytest.mark.parametrize("value, title, notes, digits, colsep, result", [
-    # uses default min_str_width = 10
-    # value, title, notes, digits, colsep, result
-    (1,   "string", None, 3, ": ", "string    :     1"),
-    (1.0, "string", None, 3, ": ", "string    : 1.000"),
-])
-def test_print_value(value: str | float,
-                     title: str,
-                     notes: str | None,
-                     digits: int,
-                     colsep: str,
-                     result: str
-                     ) -> None:
-    """
-    test print_value
-    :param value: value to print
-    :type value: str | int | float
-    :param title: title to print
-    :type title: str
-    :param notes: notes to print
-    :type notes: str
-    :param digits: precision
-    :type digits: int
-    :param colsep: column separator
-    :type colsep: str
-    :param result: printed result
-    :type result: str
-    """
-    assert result == print_value(value, title=title, notes=notes, digits=digits, colsep=colsep)

@@ -17,7 +17,7 @@ Functions:
 
     # token indices
     - select_spans -- select spans within bos & eos indices
-    - group_spans  -- group tokens into overlapping groups
+    - group_spans  -- group spans into non-overlapping groups
     - consolidate_spans -- reduce overlapping spans to a single non-overlapping group
 
     # checks
@@ -234,9 +234,9 @@ def align(source: str | list[str],
 
     # .. todo:: check for redundancy
     assert len(source) == sum(map(len, src_index)), f"partial source coverage: {src_index}"
-    assert len(target) == sum(map(len, src_index)), f"partial target coverage: {tgt_index}"
+    assert len(target) == sum(map(len, tgt_index)), f"partial target coverage: {tgt_index}"
 
-    return list(zip(src_index, tgt_index))
+    return list(zip(src_index, tgt_index, strict=True))
 
 
 def consolidate(spans: list[Span],

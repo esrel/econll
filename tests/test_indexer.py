@@ -1,11 +1,12 @@
 """ eCoNLL indexer tests """
 
+# NOT TESTED:
+#   - index
+
 import pytest
 
 from econll.indexer import clean_tokens, check_tokens, index_tokens
 
-
-# `index` is not tested explicitly
 
 def test_clean_tokens() -> None:
     """ test clean_tokens """

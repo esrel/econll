@@ -1,279 +1,174 @@
-""" evaluation methods for econll """
+"""
+eCoNLL scoring functions
+
+functions:
+    - tokeneval -- token-level evaluation
+    - chunkeval -- chunk-level evaluation
+
+    - compute_token_stats -- compute class-level gold/pred/true counts for tags (token-level)
+    - compute_chunk_stats -- compute class-level gold/pred/true counts for chunks
+    - compute_spans_stats -- compute (total) gold/pred/true counts for spans (segmentations)
+    - compute_block_stats -- compute (total) gold/pred/true counts for blocks (chunk-level)
+    - compute_match_stats -- compute (total) gold/pred/true counts for any 2 sequences
+
+    - score       -- compute pre/rec/f1s from gold/pred/true counts
+    - score_stats -- compute class-level pre/rec/f1s + micro & macro averages from class-level counts
+
+.. todo::
+    - add weighted average ?
+"""
 
 __author__ = "Evgeny A. Stepanov"
 __email__ = "stepanov.evgeny.a@gmail.com"
 __status__ = "dev"
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 
 
-from collections import defaultdict
-from dataclasses import dataclass, asdict
-
-from econll.chunks import Token
+from econll.parser import chunk
 
 
-@dataclass
-class Stats:
-    true: int = 0  # TP
-    gold: int = 0  # TP + FN (in references)
-    pred: int = 0  # TP + FP (in hypotheses)
-
-    def report(self) -> dict[str, int]:
-        return asdict(self)
-
-    def score(self) -> dict[str, float]:
-        # precision, recall, f1-score
-        pre = 1.0 if self.pred == 0 else self.true / self.pred
-        rec = 0.0 if self.gold == 0 else self.true / self.gold
-        f1s = 0.0 if (pre + rec) == 0 else (2 * pre * rec)/(pre + rec)
-        return {"p": pre, "r": rec, "f": f1s}
-
-
-# Stats Computing Functions
-def compute_param_stats(refs: list[list[Token]], hyps: list[list[Token]], param: str = None) -> dict[str, Stats]:
+# scoring functions
+def score(gold: int, pred: int, true: int) -> tuple[float, float, float]:
     """
-    compute per-label stats at token-level for ``param``
-    :param refs: references as blocks of Token objects
-    :type refs: list
-    :param hyps: hypotheses as blocks of Token objects
-    :type hyps: list
-    :param param: Token attribute to evaluate on; optional; defaults to 'token'
-    :type param: str
-    :return: dict of stats
-    :rtype: dict
+    compute precision, recall, & f1-score
+    :param gold: gold count (TP + FN)
+    :type gold: int
+    :param pred: pred count (TP + FP)
+    :type pred: int
+    :param true: true count (TP)
+    :type true: int
+    :return: precision, recall, f1-score
+    :rtype: tuple[float, float, float]
     """
-    param = "tag" if (param is None or param == "token") else param
-    stats = defaultdict(lambda: Stats())
-
-    for ref, hyp in zip([getattr(token, param) for block in refs for token in block],
-                        [getattr(token, param) for block in hyps for token in block]):
-
-        stats[str(ref)].gold += 1
-        stats[str(hyp)].pred += 1
-
-        if ref == hyp:
-            stats[str(ref)].true += 1
-
-    return dict(stats)
+    pre = 1.0 if pred == 0 else true/pred
+    rec = 0.0 if gold == 0 else true/gold
+    f1s = 0.0 if (pre + rec) == 0 else (2 * pre * rec) / (pre + rec)
+    return pre, rec, f1s
 
 
-def compute_chunk_stats(refs: list[list[Token]], hyps: list[list[Token]]) -> dict[str, Stats]:
+def score_stats(stats: dict[str, tuple[int, int, int]]
+                ) -> tuple[dict[str, tuple[float, float, float]],
+                           dict[str, tuple[float, float, float]]]:
     """
-    compute per-label stats at chunk-level (for conlleval)
-    :param refs: references as blocks of Token objects
-    :type refs: list
-    :param hyps: hypotheses as blocks of Token objects
-    :type hyps: list
-    :return: dict of stats
-    :rtype: dict
+    compute scores from per class gold/pred/true counts
+    :param stats: per class gold/pred/true counts
+    :type stats: dict[str, tuple[int, int, int]]
+    :return: per class scores & total scores
+    :rtype: tuple[dict[str, tuple[float, float, float]], dict[str, tuple[float, float, float]]]
     """
-    stats = defaultdict(lambda: Stats())
-
-    for i in range(len(refs)):
-
-        chunk_valid = False  # currently processed chunk is correct until now
-
-        for j in range(len(refs[i])):
-
-            # new chunk in references --> increment gold counts
-            if refs[i][j].boc:
-                stats[refs[i][j].label].gold += 1
-
-            # new chunk in hypotheses --> increment pred counts
-            if hyps[i][j].boc:
-                stats[hyps[i][j].label].pred += 1
-
-            # correct beginning of chunk
-            if refs[i][j].boc and hyps[i][j].boc and refs[i][j].label == hyps[i][j].label:
-                chunk_valid = True
-
-            # correct end of chunk --> increment true count
-            if refs[i][j].eoc and hyps[i][j].eoc and refs[i][j].label == hyps[i][j].label:
-                if chunk_valid:
-                    stats[refs[i][j].label].true += 1
-                chunk_valid = False
-
-            # wrong end of chunk or label
-            if refs[i][j].eoc != hyps[i][j].eoc or refs[i][j].label != hyps[i][j].label:
-                chunk_valid = False
-
-    return dict(stats)
-
-
-# Stats Math Functions: work on dict[str, Stats]
-def sum_stats(stats: dict[str, Stats]) -> Stats:
-    """
-    sum label-level stats
-    :param stats: per-label stats
-    :type stats: dict
-    :return: aggregated stats
-    :rtype: Stats
-    """
-    return Stats(*map(sum, zip(*[(o.true, o.gold, o.pred) for _, o in stats.items()])))
-
-
-def compute_weights(stats: dict[str, Stats]) -> dict[str, float]:
-    """
-    compute label/class weights from stats dict
-    :param stats: per-label stats
-    :type stats: dict
-    :return: weights
-    :rtype: dict
-    """
-    counts = {k: o.gold for k, o in stats.items()}
-    return {k: count/sum(counts.values()) for k, count in counts.items()}
-
-
-# Stats Scoring Functions
-def compute_scores(stats: dict[str, Stats]) -> dict[str, dict[str, float]]:
-    """
-    compute score from per-label stats
-    :param stats: per-label stats
-    :type stats: dict
-    :return: label level score & total level scores (averages)
-    :rtype: tuple
-    """
-    return {k: v.score() for k, v in stats.items()}
-
-
-def micro_average(stats: dict[str, Stats]) -> dict[str, float]:
-    """
-    compute micro averaged scores
-    :param stats: per-label stats
-    :type stats: dict
-    :return: micro averaged scores
-    :rtype: dict
-    """
-    return sum_stats(stats).score()
-
-
-def macro_average(stats: dict[str, Stats]) -> dict[str, float]:
-    """
-    compute macro averaged scores
-    :param stats: per-label stats
-    :type stats: dict
-    :return: macro averaged scores
-    :rtype: dict
-    """
-    return dict(zip(["p", "r", "f"],
-                    [v/len(stats) for v in map(sum,
-                                               zip(*[(o.get("p"), o.get("r"), o.get("f")) for _, o in
-                                                     compute_scores(stats).items()]))]))
-
-
-def weighted_average(stats: dict[str, Stats]) -> dict[str, float]:
-    """
-    compute average scores for a dict of stats
-    :param stats: per-label stats
-    :type stats: dict
-    :return: average scores
-    :rtype: dict
-    """
-    weights = compute_weights(stats)
-    return dict(zip(["p", "r", "f"], map(sum, zip(*[tuple([v * weights.get(k) for _, v in o.items()])
-                                                    for k, o in compute_scores(stats).items()]))))
-
-
-def compute_totals(stats: dict[str, Stats]) -> dict[str, dict[str, float]]:
-    """
-    compute average scores from stats
-    :param stats: per-label stats
-    :type stats: dict
-    :return: micro, macro, and weighted average scores
-    :rtype: dict
-    """
-    return {
-        "micro": micro_average(stats),
-        "macro": macro_average(stats),
-        "weighted": weighted_average(stats)
+    class_scores = {k: score(*v) for k, v in stats.items()}
+    total_scores = {
+        "micro": score(*map(sum, zip(*list(stats.values())))),
+        "macro": [sum(v)/len(v) for v in list(zip(*list(class_scores.values())))],
     }
+    return class_scores, total_scores
 
 
-# Evaluation Functions for list[list[Token]]
-def token_accuracy(refs: list[list[Token]], hyps: list[list[Token]]) -> float:
+# gold/pred/true counting functions
+def compute_match_stats(refs: list, hyps: list) -> tuple[int, int, int]:
     """
-    token-level accuracy
-    :param refs: references as blocks of Token objects
+    compute gold/pred/true counts over references & hypotheses
+    :param refs: references
     :type refs: list
-    :param hyps: hypotheses as blocks of Token objects
+    :param hyps: hypotheses
     :type hyps: list
-    :return: accuracy
-    :rtype: float
+    :return: gold/pred/true counts
+    :rtype: tuple[int, int, int]
     """
-    cor = [(1 if refs[i][j].tag == hyps[i][j].tag else 0) for i, block in enumerate(refs)
-           for j, token in enumerate(block)]
-    acc = sum(cor) / len(cor) if cor else 0.0
-    return acc
+    matches = [int(ref == hyp) for ref, hyp in zip(refs, hyps, strict=True)]
+    return len(matches), len(matches), sum(matches)
 
 
-def block_accuracy(refs: list[list[Token]], hyps: list[list[Token]]) -> float:
+def compute_token_stats(refs: list[list[str]],
+                        hyps: list[list[str]]
+                        ) -> dict[str, tuple[int, int, int]]:
     """
-    block-level evaluation: correct if all block tags are correct
-    :param refs: references as blocks of Token objects
-    :type refs: list
-    :param hyps: hypotheses as blocks of Token objects
-    :type hyps: list
-    :return: accuracy
-    :rtype: float
+    token-level evaluation: tags
+    :param refs: references as blocks of tags
+    :type refs: list[list[str]]
+    :param hyps: hypotheses as blocks of tags
+    :type hyps: list[list[str]]
+    :return: per class gold/pred/true counts
+    :rtype: dict[str, tuple[int, int, int]]
     """
-    cor = [(1 if [token.tag for token in refs[i]] == [token.tag for token in hyps[i]] else 0)
-           for i, block in enumerate(refs)]
-    acc = sum(cor) / len(cor) if cor else 0.0
-    return acc
+    gold = [token for block in refs for token in block]
+    pred = [token for block in hyps for token in block]
+    true = [ref for ref, hyp in zip(gold, pred, strict=True) if ref == hyp]
+
+    return {key: (gold.count(key), pred.count(key), true.count(key))
+            for key in sorted(list(set(gold + pred)))}
 
 
-def score(refs: list[list[Token]],
-          hyps: list[list[Token]],
-          level: str = None
-          ) -> tuple[dict[str, dict[str, float]], ...]:
+def compute_chunk_stats(refs: list[list[str]],
+                        hyps: list[list[str]],
+                        **kwargs
+                        ) -> dict[str, tuple[int, int, int]]:
     """
-    tag-level evaluation
-    :param refs: references as blocks of Token objects
-    :type refs: list
-    :param hyps: hypotheses as blocks of Token objects
-    :type hyps: list
-    :param level: evaluation level, one of ['tag', 'affix', 'label', 'chunk']
-    :type level: str
-    :return: per label (tag) scores & total scores
-    :rtype: tuple
+    chunk-level evaluation: span + label
+    :param refs: references as blocks of tags
+    :type refs: list[list[str]]
+    :param hyps: hypotheses as blocks of tags
+    :type hyps: list[list[str]]
+    :return: per class gold/pred/true counts
+    :rtype: dict[str, tuple[int, int, int]]
     """
-    level = "chunk" if level is None else level
+    gold: list[str] = []  # gold chunk labels
+    pred: list[str] = []  # pred chunk labels
+    true: list[str] = []  # true chunk labels
 
-    stats = compute_chunk_stats(refs, hyps) if level == "chunk" else compute_param_stats(refs, hyps, param=level)
+    for ref, hyp in zip(refs, hyps, strict=True):
+        block_gold = set(chunk(ref, **kwargs))
+        block_pred = set(chunk(hyp, **kwargs))
 
-    label_scores = compute_scores(stats)
-    label_report = {k: v.report() for k, v in stats.items()}
+        gold.extend([y for y, _, _ in block_gold])
+        pred.extend([y for y, _, _ in block_pred])
+        true.extend([y for y, _, _ in block_gold.intersection(block_pred)])
 
-    total_scores = compute_totals(stats)
-    total_report = {k: sum_stats(stats).report() for k, _v in total_scores.items()}
-
-    return label_scores, label_report, total_scores, total_report
+    return {key: (gold.count(key), pred.count(key), true.count(key))
+            for key in sorted(list(set(gold + pred)))}
 
 
-def tokeneval(refs: list[list[Token]],
-              hyps: list[list[Token]]
-              ) -> tuple[dict[str, dict[str, float]], ...]:
+def compute_spans_stats(refs: list[list[str]],
+                        hyps: list[list[str]],
+                        **kwargs
+                        ) -> tuple[int, int, int]:
     """
-    tag-level evaluation
-    :param refs: references as blocks of Token objects
-    :type refs: list
-    :param hyps: hypotheses as blocks of Token objects
-    :type hyps: list
-    :return: per label (tag) scores & total scores
-    :rtype: tuple
+    chunk-level evaluation: segmentation (ignoring labels)
+    :param refs: references as blocks of tags
+    :type refs: list[list[str]]
+    :param hyps: hypotheses as blocks of tags
+    :type hyps: list[list[str]]
+    :return: gold/pred/true counts
+    :rtype: tuple[int, int, int]
     """
-    return score(refs, hyps, level="tag")
+    gold: int = 0  # gold chunk count
+    pred: int = 0  # pred chunk count
+    true: int = 0  # true chunk count
+
+    for ref, hyp in zip(refs, hyps, strict=True):
+        block_gold = {(b, e) for _, b, e in chunk(ref, **kwargs)}
+        block_pred = {(b, e) for _, b, e in chunk(hyp, **kwargs)}
+
+        gold += len(block_gold)
+        pred += len(block_pred)
+        true += len(block_gold.intersection(block_pred))
+
+    return gold, pred, true
 
 
-def chunkeval(refs: list[list[Token]],
-              hyps: list[list[Token]]
-              ) -> tuple[dict[str, dict[str, float]], ...]:
+def compute_block_stats(refs: list[list[str]],
+                        hyps: list[list[str]],
+                        **kwargs
+                        ) -> tuple[int, int, int]:
     """
-    chunk-level evaluation
-    :param refs: references as blocks of Token objects
-    :type refs: list
-    :param hyps: hypotheses as blocks of Token objects
-    :type hyps: list
-    :return:
+    chunk-level evaluation: blocks
+    :param refs: references as blocks of tags
+    :type refs: list[list[str]]
+    :param hyps: hypotheses as blocks of tags
+    :type hyps: list[list[str]]
+    :return: total block stats
+    :rtype: tuple[int, int, int]
     """
-    return score(refs, hyps, level="chunk")
+    ref_block_chunks = [set(chunk(ref, **kwargs)) for ref in refs]
+    hyp_block_chunks = [set(chunk(hyp, **kwargs)) for hyp in hyps]
+    return compute_match_stats(ref_block_chunks, hyp_block_chunks)

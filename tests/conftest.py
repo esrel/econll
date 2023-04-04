@@ -355,3 +355,35 @@ def data_chunks() -> list[list[tuple[str, int, int]]]:
         [('X', 2, 4), ('Y', 4, 6)],
         [('Y', 5, 8)]
     ]
+
+
+@pytest.fixture
+def data_class_stats() -> dict[str, dict[str, tuple[int, int, int]]]:
+    """
+    class-level evaluation counts
+    :return: per class gold/pred/true counts for hyps
+    :rtype: dict[str, dict[str, tuple[int, int, int]]]
+    """
+    return {
+        "token": {
+            "B-X": (10, 8, 7), "B-Y": (5, 4, 3),
+            "I-X": (6, 5, 3), "I-Y": (4, 6, 4),
+            "O": (25, 27, 23)
+        },
+        "chunk": {"X": (10, 8, 3), "Y": (5, 6, 4)}
+    }
+
+
+@pytest.fixture
+def data_total_stats() -> dict[str, tuple[int, int, int]]:
+    """
+    total evaluation counts
+    :return: total gold/pred/true counts for hyps
+    :rtype: dict[str, tuple[int, int, int]]
+    """
+    return {
+        "token": (50, 50, 40),
+        "block": (10, 10, 4),
+        "chunk": (15, 14, 7),
+        "spans": (15, 14, 8)
+    }

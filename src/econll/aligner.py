@@ -33,15 +33,15 @@ def align(source: str | list[str],
     :rtype: list[tuple[list[int], list[int]]]
     """
     tokens = source if tokens is None else tokens
-    tokens = tokens if isinstance(tokens, str) else " ".join(tokens)
-    source = source if isinstance(source, list) else source.split()
-    target = target if isinstance(target, list) else target.split()
+    txt = tokens if isinstance(tokens, str) else " ".join(tokens)
+    src = source if isinstance(source, list) else source.split()
+    tgt = target if isinstance(target, list) else target.split()
 
-    if source == target:
-        return [([i], [i]) for i in range(len(source))]
+    if src == tgt:
+        return [([i], [i]) for i in range(len(src))]
 
-    src_spans = index(source, tokens)
-    tgt_spans = index(target, tokens)
+    src_spans = index(src, txt)
+    tgt_spans = index(tgt, txt)
     aln_spans = align_spans(src_spans, tgt_spans)
 
     src_index = [scope_spans(src_spans, bos, eos) for bos, eos in aln_spans]

@@ -3,11 +3,13 @@
 ## Functionality
 
 - Add baselines
+- Add partial span match evaluation (extend `compute_span_stats`)
 
 ## Processing
 
 - Add possibility to convert CoNLL data to JSON (e.g. `rasa`)
   Requires, token indexing for raw text.
+- Add alignment with token substitutions
 
 ## Reporting
 

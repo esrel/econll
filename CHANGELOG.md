@@ -21,6 +21,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - updated report table to accommodate full report
 - changed chunk methods to work at block level
 - changed `evaluate` to be in-line with `chunk_eval` and `token_eval`
+- removed `correct` command from CLI
+- separated parsing/merging from modifications (reaffix/relabel/convert)
 
 ## 0.1.2
 

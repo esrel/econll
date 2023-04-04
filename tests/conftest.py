@@ -1,11 +1,12 @@
-""" eCoNLL Common Data """
+""" eCoNLL common test data """
 
+import string
 import pytest
 
 
 # eCoNLL Test Data
-@pytest.fixture
-def data_tags() -> list[list[str]]:
+@pytest.fixture(name='data_tags')
+def fixture_data_tags() -> list[list[str]]:
     """
     generate synthetic CoNLL data
 
@@ -62,6 +63,19 @@ def data_tags() -> list[list[str]]:
         # other: for token & chunk stats
         ['O', 'O', 'O', 'O', 'O', 'B-Y', 'I-Y', 'I-Y', 'O'],
     ]
+
+
+@pytest.fixture
+def data_text(data_tags: list[list[str]]) -> list[list[str]]:
+    """
+    generate random text for data
+    :param data_tags: references
+    :type data_tags: list[list[str]]
+    :return: generated data text
+    :rtype: list[list[str]]
+    """
+    char_list = [*string.ascii_lowercase]
+    return [char_list[:len(block)] for block in data_tags]
 
 
 @pytest.fixture

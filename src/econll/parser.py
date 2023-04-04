@@ -1,9 +1,26 @@
 """
-Tag Parsing/Merging & Transformation Functions
+tag parsing/merging, chunk begin/end & transformation functions
 
-Note: internally makes use of IOB(ES) schemes & requires conversion to one
+functions:
+    - parse -- parse a sequence of tags into a sequence of label-affix pairs
+    - merge -- merge a sequence of label-affix pairs into a sequence of tags
+    - chunk -- extract chunks from a sequence of token tags or label-affix pairs
+    - remap -- remap token label or affix in a sequence of token tags or label-affix pairs
 
-Shared Params:
+    - parse_tag/merge_tag -- parse a tag into / merge a tag from a label-affix pair
+    - isa_boc/ _eoc       -- check if a label-affix pair begins/ends a chunk
+    - get_boc/ _eoc       -- apply isa_boc/isa_eoc to a sequence of label-affix pairs
+
+    # IOB1 & IOE1 support functions
+    - isa_coc             -- check if label-affix pair is a chunk-change token
+    - get_coc_boc/ _eoc   -- check if a label-affix pair begins/ends a chunk & isa_coc
+
+    # transformation functions
+    - relabel -- remap labels
+    - reaffix -- remap affixes to IOBES scheme
+    - convert -- convert affixes to a target scheme (among the supported)
+
+shared params:
     # tag format
     - kind: str = "prefix" -- kind of affix, defaults to 'prefix'
     - glue: str = "-"      -- label-affix separator, defaults to '-'
@@ -14,38 +31,6 @@ Shared Params:
                                        if target is None, it is removed
     - morphs: dict[str, str]        -- mapping for source to target affix set
     - scheme: str                   -- target scheme to convert among supported chunk coding schemes
-
-Functions:
-    # main functions
-    - parse -- parse a sequence of tags into a sequence of label-affix pairs
-               applying requested transformations
-    - merge -- merge a sequence of label-affix pairs into a sequence of tags
-               applying requested transformations
-
-    # tag parsing/merging functions
-    - parse_tag/merge_tag   -- parse a tag into / merge a tag from a label-affix pair
-    - parse_tags/merge_tags -- apply parse_tag/merge_tag to a sequence of tags/label-affix pairs
-    - isa_boc/isa_eoc       -- check if a label-affix pair begins/ends a chunk
-    - get_boc/get_eoc       -- apply isa_boc/isa_eoc to a sequence of label-affix pairs
-
-    # affix generation functions (for convert)
-    - get_scheme            -- get scheme mapping from scheme name
-    - get_affix             -- get an affix from a scheme mapping by scheme name
-    - gen_affix             -- generate an affix from label, bos & eos flags, and scheme name
-
-    # transformation functions
-    - relabel -- remap labels
-    - reaffix -- remap affixes to IOBES scheme
-    - convert -- convert affixes to a target scheme (among the supported)
-
-    # IOB1 & IOE1 support functions
-    - isa_coc -- check if label-affix pair is a chunk-change token
-    - get_coc_boc/get_coc_eoc -- check if a label-affix pair begins/ends a chunk & isa_coc
-
-    # checks
-    - check_affix  -- check that all affixes are from IOBES
-    - check_scheme -- check that all affixes are from IOBES with input as label-affix pairs
-    - check_morphs -- check that all affixes are from IOBES with input as affix-affix mapping
 """
 
 __author__ = "Evgeny A. Stepanov"
@@ -54,20 +39,83 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
+from functools import partial
 from itertools import pairwise
 
 
-# aliases
-Affix = str
-Label = str | None
+def parse(data: list[str],  **kwargs) -> list[tuple[str | None, str]]:
+    """
+    parse tags into label-affix pairs
+    :param data: token tags
+    :type data: list[str]
+    :return: label-affix pairs
+    :rtype: list[tuple[str | None, str]]
+    """
+    return [parse_tag(token, **kwargs) for token in data]
 
 
-# tag parsing/merging
+def merge(data: list[tuple[str | None, str]],  **kwargs) -> list[str]:
+    """
+    merge tags from label-affix pairs
+    :param data: label-affix pairs
+    :type data: list[tuple[str | None, str]]
+    :return: tags
+    :rtype: list[str]
+    """
+    return [merge_tag(label, affix, **kwargs) for label, affix in data]
+
+
+def chunk(data: list[str | tuple[str | None, str]], **kwargs) -> list[tuple[str, int, int]]:
+    """
+    extract chunks from a sequence of token tags or label-affix pairs
+    :param data: a sequence of token tags or label-affix pairs
+    :type data: list[str | tuple[str | None, str]]
+    :return: chunks
+    :rtype: list[tuple[str, int, int]]
+    """
+    data = parse(data, **kwargs) if all(isinstance(token, str) for token in data) else data
+
+    bos = [i for i, boc in enumerate(get_boc(data)) if boc]
+    eos = [i for i, eoc in enumerate(get_eoc(data)) if eoc]
+    lbl = [label for i, (label, _) in enumerate(data) if i in bos]
+
+    return [(y, b, e + 1) for y, b, e in zip(lbl, bos, eos, strict=True)]
+
+
+def remap(data: list[str | tuple[str | None, str]],
+          otag: str = "O",
+          labels: dict[str, str | None] = None,
+          morphs: dict[str, str] = None,
+          **kwargs
+          ) -> list[str | tuple[str | None, str]]:
+    """
+    remap token label or affix
+    :param data: a sequence of token tags or label-affix pairs
+    :type data: list[str | tuple[str | None, str]]
+    :param otag: outside tag, defaults to 'O'
+    :type otag: str, optional
+    :param labels: mapping for label substitution, defaults to None
+    :type labels: dict[str, str | None], optional
+    :param morphs: mapping for affix substitution, defaults to None
+    :type morphs: dict[str, str], optional
+    :param kwargs: tag parsing parameters
+    :return: tags or label-affix pairs
+    :rtype: list[str | tuple[str | None, str]]
+    """
+    labels = labels or {}
+    morphs = morphs or {}
+    tokens = parse(data, **kwargs) if all(isinstance(token, str) for token in data) else data
+    tokens = [((new_label := labels.get(label, label)),
+               (morphs.get(affix, affix) if new_label else otag))
+              for label, affix in tokens]
+    return merge(tokens, **kwargs) if all(isinstance(token, str) for token in data) else tokens
+
+
 def parse_tag(tag: str,
               kind: str = "prefix",
               glue: str = "-",
               otag: str = "O"
-              ) -> tuple[Label, Affix]:
+              ) -> tuple[str | None, str]:
     """
     parse tag into affix & label w.r.t. params
     :param tag: token tag
@@ -87,8 +135,8 @@ def parse_tag(tag: str,
     return label, affix
 
 
-def merge_tag(label: Label,
-              affix: Affix,
+def merge_tag(label: str | None,
+              affix: str,
               kind: str = "prefix",
               glue: str = "-",
               otag: str = "O"
@@ -112,35 +160,9 @@ def merge_tag(label: Label,
     return otag if label is None else f"{prefix}{glue}{suffix}"
 
 
-def parse_tags(data: list[str], **kwargs) -> list[tuple[Label, Affix]]:
-    """
-    parse token tags into label-affix pairs
-    :param data: list of tags
-    :type data: list[str]
-    :param kwargs: tag parsing config
-    :type kwargs: str
-    :return: label-affix pairs
-    :rtype: list[tuple[str | None, str]]
-    """
-    return [parse_tag(item, **kwargs) for item in data]
-
-
-def merge_tags(data: list[tuple[Label, Affix]], **kwargs) -> list[str]:
-    """
-    generate tags from a list of label-affix pairs
-    :param data: label-affix pairs
-    :type data: list[tuple[str | None, str]]
-    :param kwargs: tag parsing config
-    :type kwargs: str
-    :return: token tags
-    :rtype: list[str]
-    """
-    return [merge_tag(label, affix, **kwargs) for label, affix in data]
-
-
 # chunk begin & end checks
-def isa_boc(prev_label: Label, prev_affix: Affix,
-            curr_label: Label, curr_affix: Affix
+def isa_boc(prev_label: str | None, prev_affix: str,
+            curr_label: str | None, curr_affix: str
             ) -> bool:
     """
     is a beginning of a chunk: checks if a chunk started between the previous and the current token
@@ -162,8 +184,8 @@ def isa_boc(prev_label: Label, prev_affix: Affix,
     return boc
 
 
-def isa_eoc(prev_label: Label, prev_affix: Affix,
-            curr_label: Label, curr_affix: Affix
+def isa_eoc(prev_label: str | None, prev_affix: str,
+            curr_label: str | None, curr_affix: str
             ) -> bool:
     """
     is an end of a chunk: checks if a chunk ended between the previous and the current token
@@ -185,7 +207,7 @@ def isa_eoc(prev_label: Label, prev_affix: Affix,
     return eoc
 
 
-def get_boc(data: list[tuple[Label, Affix]]) -> list[bool]:
+def get_boc(data: list[tuple[str | None, str]]) -> list[bool]:
     """
     get beginning of a chunk flags (bool) for a list of label-affix pairs
     :param data: label-affix pairs
@@ -196,7 +218,7 @@ def get_boc(data: list[tuple[Label, Affix]]) -> list[bool]:
     return [isa_boc(*prev, *curr) for prev, curr in pairwise([(None, "O")] + data)]
 
 
-def get_eoc(data: list[tuple[Label, Affix]]) -> list[bool]:
+def get_eoc(data: list[tuple[str | None, str]]) -> list[bool]:
     """
     get end of a chunk flags (bool) for a list of label-affix pairs
     :param data: label-affix pairs
@@ -207,221 +229,9 @@ def get_eoc(data: list[tuple[Label, Affix]]) -> list[bool]:
     return [isa_eoc(*prev, *curr) for prev, curr in pairwise(data + [(None, "O")])]
 
 
-# transformations
-def relabel_token(label: Label,
-                  affix: Affix,
-                  labels: dict[Label, Label],
-                  otag: str = "O"
-                  ) -> tuple[Label, Affix]:
-    """
-    re-label a label-affix pair (token)
-    :param label: token label
-    :type label: str | None
-    :param affix: token affix
-    :type affix: str
-    :param labels: mapping for label substitution, defaults to None
-    :type labels: dict[str, str | None]
-    :param otag: outside tag (affix), defaults to 'O'
-    :type otag: str, optional
-    :return: label-affix pair
-    :rtype: tuple[str | None, str]
-    """
-    new_label = labels.get(label, label)
-    new_affix = otag if new_label is None else affix
-    return new_label, new_affix
-
-
-def reaffix_token(label: Label,
-                  affix: Affix,
-                  morphs: dict[Affix, Affix],
-                  otag: str = "O"
-                  ) -> tuple[Label, Affix]:
-    """
-    re-affix a label-affix pair (token)
-    :param label: token label
-    :type label: str | None
-    :param affix: token affix
-    :type affix: str
-    :param morphs: mapping for affix substitution, defaults to None
-    :type morphs: dict[str, str]
-    :param otag: outside tag (affix), defaults to 'O'
-    :type otag: str, optional
-    :return: label-affix pair
-    :rtype: tuple[str | None, str]
-    """
-    return label, (otag if label is None else morphs.get(affix, affix))
-
-
-def relabel(tokens: list[tuple[Label, Affix]],
-            labels: dict[Label, Label],
-            otag: str = "O"
-            ) -> list[tuple[Label, Affix]]:
-    """
-    re-label tokens to IOB(ES) using mapping, setting the affixes for labels mapped to None to 'O'
-    :param tokens: label-affix pairs
-    :type tokens: list[tuple[str | None, str]]
-    :param labels: mapping for label substitution, defaults to None
-    :type labels: dict[str, str | None]
-    :param otag: outside tag (affix), defaults to 'O'
-    :type otag: str, optional
-    :return: label-affix pairs
-    :rtype: list[tuple[str | None, str]]
-    """
-    return [relabel_token(label, affix, labels, otag=otag) for label, affix in tokens]
-
-
-def reaffix(tokens: list[tuple[Label, Affix]],
-            morphs: dict[Affix, Affix],
-            otag: str = "O"
-            ) -> list[tuple[Label, Affix]]:
-    """
-    re-affix tokens to IOB(ES) using mapping
-    :param tokens: label-affix pairs
-    :type tokens: list[tuple[str | None, str]]
-    :param morphs: mapping for affix substitution, defaults to None
-    :type morphs: dict[str, str]
-    :param otag: outside tag (affix), defaults to 'O'
-    :type otag: str, optional
-    :return: label-affix pairs
-    :rtype: list[tuple[str | None, str]]
-    """
-    return [reaffix_token(label, affix, morphs, otag=otag) for label, affix in tokens]
-
-
-# affix generation: IOBES only
-def get_scheme(scheme: str) -> dict[str, str]:
-    """
-    get affix scheme mapping for supported schemes
-    :param scheme: chunk coding scheme
-    :type scheme: str
-    :return: affix mapping
-    :rtype: dict[str, str]
-    """
-    schemes = {
-        "IO": {"I": "I", "O": "O", "B": "I", "E": "I", "S": "I"},
-        "IOB": {"I": "I", "O": "O", "B": "B", "E": "I", "S": "B"},
-        "IOE": {"I": "I", "O": "O", "B": "I", "E": "E", "S": "E"},
-        "IOBE": {"I": "I", "O": "O", "B": "B", "E": "E", "S": "B"},
-        "IOBES": {"I": "I", "O": "O", "B": "B", "E": "E", "S": "S"},
-    }
-
-    if scheme not in schemes:
-        raise ValueError(f"Unsupported Scheme: {scheme}")
-
-    return schemes.get(scheme)
-
-
-def get_affix(affix: str, scheme: str) -> str:
-    """
-    get an affix w.r.t. a scheme
-    :param affix: affix
-    :type affix: str
-    :param scheme: target chunk coding scheme (one of the supported)
-    :type scheme: str
-    :return: affix
-    :rtype: str
-    """
-    scheme = get_scheme(scheme)
-    return scheme.get(affix)
-
-
-def gen_affix(label: Label, boc: bool, eoc: bool, scheme: str) -> Affix:
-    """
-    generate IOBES affix
-    :param label: token label
-    :type label: str | None
-    :param boc: beginning-of-chunk flag
-    :type boc: bool
-    :param eoc: end-of-chunk flag
-    :type eoc: bool
-    :param scheme: target chunk coding scheme (one of the supported)
-    :type scheme: str
-    :return: token affix
-    :rtype: str
-    """
-    affix = (
-        "O" if label is None else
-        "B" if boc and not eoc else
-        "E" if not boc and eoc else
-        "S" if boc and eoc else
-        "I"
-    )
-    return get_affix(affix, scheme)
-
-
-# conversion
-def convert(tokens: list[tuple[Label, Affix]],
-            scheme: str,
-            labels: bool = True,
-            ) -> list[tuple[Label, Affix]]:
-    """
-    convert token affixes to the target ``scheme``
-    :param tokens: label-affix pairs
-    :type tokens: list[tuple[str | None, str]]
-    :param scheme: target chunk coding scheme (one of the supported)
-    :type scheme: str
-    :param labels: if to require label match for IOB1 & IOE1, defaults to True
-    :type labels: bool
-    :return: label-affix pairs
-    :rtype: list[tuple[str | None, str]]
-    """
-    maps = {"IOB1": "IOB", "IOE1": "IOE"}
-
-    outs = [(label, gen_affix(label, boc, eoc, maps.get(scheme, scheme)))
-            for boc, eoc, (label, _) in zip(get_boc(tokens), get_eoc(tokens), tokens)]
-
-    # IOB2 -> IOB1: B -> I, if not coc
-    if scheme == "IOB1":
-        coc = get_coc_boc(tokens, same_label=labels)
-        outs = [(label, ("I" if (affix == "B" and boc is False) else affix))
-                for boc, (label, affix) in zip(coc, outs, strict=True)]
-
-    # IOE2 -> IOE1: E -> I, if not coc
-    if scheme == "IOE1":
-        coc = get_coc_eoc(tokens, same_label=labels)
-        outs = [(label, ("I" if (affix == "E" and eoc is False) else affix))
-                for eoc, (label, affix) in zip(coc, outs, strict=True)]
-
-    return outs
-
-
-# scheme checking
-def check_affix(data: list[str]) -> None:
-    """
-    check that all affixes in data are from IOBES
-    :param data: affixes
-    :type data: list[str]
-    """
-    errors = {affix for affix in data if affix not in {"I", "O", "B", "E", "S"}}
-
-    if errors:
-        raise ValueError(f"Unsupported Scheme Affix(es): {errors}")
-
-
-def check_scheme(data: list[tuple[Label, Affix]]) -> None:
-    """
-    check that data uses one of the supported schemes,
-    i.e. all affixes are from IOBES
-    :param data: label-affix pairs
-    :type data: list[tuple[str | None, str]]
-    """
-    _, affix_list = list(map(list, zip(*data)))
-    check_affix(affix_list)
-
-
-def check_morphs(morphs: dict[Affix, Affix]) -> None:
-    """
-    check that morphs is a mapping to IOBES
-    converts to tuples & uses check_scheme
-    :param morphs: mapping for affix substitution
-    :type morphs: dict[str, str]
-    """
-    check_affix(list(morphs.values()))
-
-
 # IOB1 & IOE1 support: with & without label match requirement
-def isa_coc(prev_label: Label, prev_affix: Affix,
-            curr_label: Label, curr_affix: Affix,
+def isa_coc(prev_label: str | None, prev_affix: str,
+            curr_label: str | None, curr_affix: str,
             same_label: bool = True
             ) -> bool:
     """
@@ -447,7 +257,7 @@ def isa_coc(prev_label: Label, prev_affix: Affix,
     return boc and eoc and lbl
 
 
-def get_coc_boc(data: list[tuple[Label, Affix]], **kwargs) -> list[bool]:
+def get_coc_boc(data: list[tuple[str | None, str]], **kwargs) -> list[bool]:
     """
     get change-of-chunk flags (output is len(data) - 1)
     :param data: label-affix pairs
@@ -458,7 +268,7 @@ def get_coc_boc(data: list[tuple[Label, Affix]], **kwargs) -> list[bool]:
     return [False] + [isa_coc(*prev, *curr, **kwargs) for prev, curr in pairwise(data)]
 
 
-def get_coc_eoc(data: list[tuple[Label, Affix]], **kwargs) -> list[bool]:
+def get_coc_eoc(data: list[tuple[str | None, str]], **kwargs) -> list[bool]:
     """
     get change-of-chunk flags (output is len(data) - 1)
     :param data: label-affix pairs
@@ -469,79 +279,61 @@ def get_coc_eoc(data: list[tuple[Label, Affix]], **kwargs) -> list[bool]:
     return [isa_coc(*prev, *curr, **kwargs) for prev, curr in pairwise(data)] + [False]
 
 
-# API functions
-def parse(data: list[str],
-          labels: dict[Label, Label] = None,
-          morphs: dict[Affix, Affix] = None,
-          scheme: str = None,
-          **kwargs
-          ) -> list[tuple[Label, Affix]]:
+def convert(data: list[str | tuple[str | None, str]],
+            scheme: str = "IOBES",
+            **kwargs
+            ) -> list[str | tuple[str | None, str]]:
     """
-    parse tags into label-affix pairs, performing:
-
-        - label substitution (including with None, i.e. removal)
-        - affix substitution to IOB(ES) scheme
-        - affix conversion among supported chunk coding schemes, generating affixes anew
-
-    :param data: token tags
-    :type data: list[str]
-    # :param kind: kind of affix, defaults to 'prefix'
-    # :type kind: str, optional
-    # :param glue: label-affix separator, defaults to '-'
-    # :type glue: str, optional
-    # :param otag: outside tag, defaults to 'O'
-    # :type otag: str, optional
-    :param labels: mapping for label substitution, defaults to None
-    :type labels: dict[str, str | None]
-    :param morphs: mapping for affix substitution, defaults to None
-    :type morphs: dict[str, str]
-    :param scheme: target chunk coding scheme (one of the supported)
-    :type scheme: str
-    :return: label-affix pairs
-    :rtype: list[tuple[str | None, str]]
+    convert tagging scheme (update affixes)
+    :param data: token tags or label-affix pairs
+    :type data: list[str | tuple[str | None, str]]
+    :param scheme: target scheme, defaults to 'IOBES'
+    :type scheme: str, optional
+    :return: converted tags or label-affix pairs
+    :rtype: list[str | tuple[str | None, str]]
+    :raises ValueError: if the scheme is unsupported
     """
-    pairs = parse_tags(data, **kwargs)
+    coding = scheme
+    scheme = scheme.removesuffix("1")
 
-    if morphs is None:
-        check_scheme(pairs)
-    else:
-        check_morphs(morphs)
+    # check scheme
+    if errors := {affix for affix in scheme if affix not in "IOBES"}:
+        raise ValueError(f"Unsupported Scheme Affix(es): {errors}")
 
-    pairs = pairs if labels is None else relabel(pairs, labels)
-    pairs = pairs if morphs is None else reaffix(pairs, morphs)
-    pairs = pairs if scheme is None else convert(pairs, scheme)
+    # affix: (int(boc), int(eoc), int(label is not None))
+    mapping = {"I": (0, 0, 1), "O": (0, 0, 0), "B": (1, 0, 1), "E": (0, 1, 1), "S": (1, 1, 1)}
+    schemes = {
+        "IO":    {"I": "I", "O": "O", "B": "I", "E": "I", "S": "I"},
+        "IOB":   {"I": "I", "O": "O", "B": "B", "E": "I", "S": "B"},
+        "IOE":   {"I": "I", "O": "O", "B": "I", "E": "E", "S": "E"},
+        "IOBE":  {"I": "I", "O": "O", "B": "B", "E": "E", "S": "B"},
+        "IOBES": {"I": "I", "O": "O", "B": "B", "E": "E", "S": "S"},
+    }
 
-    return pairs
+    morphs = {codes: schemes.get(scheme, {}).get(affix, affix) for affix, codes in mapping.items()}
+
+    tokens = parse(data, **kwargs) if all(isinstance(token, str) for token in data) else data
+
+    tokens = [(label, morphs.get((boc, eoc, int(label is not None)), affix))
+              for (label, affix), boc, eoc
+              in zip(tokens,
+                     list(map(int, get_boc(tokens))),
+                     list(map(int, get_eoc(tokens))),
+                     strict=True)]
+
+    # IOB1: B -> I, if not coc
+    tokens = ([(label, ("I" if (affix == "B" and boc is False) else affix))
+               for (label, affix), boc in zip(tokens, get_coc_boc(tokens), strict=True)]
+              if coding == "IOB1" else tokens)
+
+    # IOE1: E -> I, if not coc
+    tokens = ([(label, ("I" if (affix == "E" and eoc is False) else affix))
+               for (label, affix), eoc in zip(tokens, get_coc_eoc(tokens), strict=True)]
+              if coding == "IOE1" else tokens)
+
+    return merge(tokens, **kwargs) if all(isinstance(token, str) for token in data) else tokens
 
 
-def merge(tokens: list[tuple[Label, Affix]],
-          labels: dict[Label, Label] = None,
-          morphs: dict[Affix, Affix] = None,
-          scheme: str = None,
-          **kwargs
-          ) -> list[str]:
-    """
-    merge tags from label-affix pairs, performing:
-
-        - label substitution (including with None, i.e. removal)
-        - affix substitution from IOB(ES) scheme
-        - affix conversion among supported chunk coding schemes, generating affixes anew
-
-    :param tokens: label-affix pairs
-    :type tokens: list[tuple[Label, Affix]]
-    :param labels: mapping for label substitution, defaults to None
-    :type labels: dict[str, str | None]
-    :param morphs: mapping for affix substitution, defaults to None
-    :type morphs: dict[str, str]
-    :param scheme: target chunk coding scheme (one of the supported)
-    :type scheme: str
-    :return: tags
-    :rtype: list[str]
-    """
-    pairs = tokens
-
-    pairs = pairs if labels is None else relabel(pairs, labels)
-    pairs = pairs if scheme is None else convert(pairs, scheme)
-    pairs = pairs if morphs is None else reaffix(pairs, morphs)
-
-    return merge_tags(pairs, **kwargs)
+# alias functions
+relabel = partial(remap, morphs=None)
+reaffix = partial(remap, labels=None)

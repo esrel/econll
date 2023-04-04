@@ -2,16 +2,13 @@
 
 import pytest
 
-from econll.parser import isa_boc, isa_eoc, isa_coc
+from econll.parser import parse, merge
+from econll.parser import chunk, remap
 from econll.parser import parse_tag, merge_tag
-from econll.parser import parse_tags, merge_tags
+from econll.parser import isa_boc, isa_eoc, isa_coc
 from econll.parser import get_boc, get_eoc
 from econll.parser import get_coc_boc, get_coc_eoc
-from econll.parser import relabel_token, reaffix_token
 from econll.parser import relabel, reaffix, convert
-from econll.parser import get_scheme, get_affix, gen_affix
-from econll.parser import check_scheme, check_morphs
-from econll.parser import parse, merge
 
 
 @pytest.fixture
@@ -296,8 +293,8 @@ def test_get_boc_eoc(data_refs: list[list[tuple[str | None, str]]],
             data_tags, data_refs,
             data_bocs, data_eocs,
             strict=True):
-        assert pair_list == parse_tags(tags_list)
-        assert tags_list == merge_tags(pair_list)
+        assert pair_list == parse(tags_list)
+        assert tags_list == merge(pair_list)
         assert bocs_list == get_boc(pair_list)
         assert eocs_list == get_eoc(pair_list)
 
@@ -335,24 +332,21 @@ def test_get_coc_boc_eoc(data_refs, data_coc_boc, data_coc_eoc) -> None:
 
 
 # Transformation Tests
-# Token-Level
 @pytest.mark.parametrize("data, outs", [
     ((None, "O"), (None, "O")),
     (("X", "I"), ("A", "I")),
     (("Y", "I"), (None, "O")),
 ])
-def test_relabel_token(data: tuple[str | None, str],
-                       outs: tuple[str | None, str]
-                       ) -> None:
+def test_relabel(data: tuple[str | None, str], outs: tuple[str | None, str]) -> None:
     """
-    test token-level relabel
+    test relabel
     :param data: label-affix pair to relabel
     :type data: tuple[str | None, str]
     :param outs: relabeled label-affix pair
     :type outs: tuple[str | None, str]
     """
     labels = {"X": "A", "Y": None}
-    assert outs == relabel_token(*data, labels=labels)
+    assert [outs] == relabel([data], labels=labels)
 
 
 @pytest.mark.parametrize("data, outs", [
@@ -362,126 +356,16 @@ def test_relabel_token(data: tuple[str | None, str],
     (("X", "L"), ("X", "I")),
     (("X", "U"), ("X", "B")),
 ])
-def test_reaffix_token(data: tuple[str | None, str],
-                       outs: tuple[str | None, str]
-                       ) -> None:
+def test_reaffix(data: tuple[str | None, str], outs: tuple[str | None, str]) -> None:
     """
-    test token-level re-affix
+    test re-affix
     :param data: label-affix pair to re-affix
     :type data: tuple[str | None, str]
     :param outs: re-affixed label-affix pair
     :type outs: tuple[str | None, str]
     """
     morphs = {"U": "B", "L": "I"}  # BILOU to IOB
-    assert outs == reaffix_token(*data, morphs=morphs)
-
-
-# Sequence-Level
-def test_relabel_reaffix(data_tags: list[list[str]],
-                         data_mods: list[list[str]]
-                         ) -> None:
-    """
-    test sequence re-labeling & re-affixing
-    :param data_tags: original tag sequences
-    :type data_tags: list[list[str]]
-    :param data_mods: modified tag sequences
-    :type data_mods: list[list[str]]
-    """
-    labels = {"X": "A", "Y": None}
-    morphs = {"B": "F", "I": "M"}
-    for tags, mods in zip(data_tags, data_mods, strict=True):
-        assert parse_tags(mods) == reaffix(relabel(parse_tags(tags), labels), morphs)
-
-
-# Generation Tests
-def test_get_scheme() -> None:
-    """ test get_scheme """
-    for scheme in ["IO", "IOB", "IOE", "IOBE", "IOBES"]:
-        assert isinstance(get_scheme(scheme), dict)
-
-    for scheme in ["IOB1", "IOE1", "BIO", "BILOU"]:
-        with pytest.raises(ValueError):
-            get_scheme(scheme)
-
-
-@pytest.mark.parametrize("iobes, scheme, affix", [
-    ("O", "IO", "O"), ("O", "IOB", "O"), ("O", "IOE", "O"), ("O", "IOBE", "O"), ("O", "IOBES", "O"),
-    ("I", "IO", "I"), ("I", "IOB", "I"), ("I", "IOE", "I"), ("I", "IOBE", "I"), ("I", "IOBES", "I"),
-    ("B", "IO", "I"), ("B", "IOB", "B"), ("B", "IOE", "I"), ("B", "IOBE", "B"), ("B", "IOBES", "B"),
-    ("E", "IO", "I"), ("E", "IOB", "I"), ("E", "IOE", "E"), ("E", "IOBE", "E"), ("E", "IOBES", "E"),
-    ("S", "IO", "I"), ("S", "IOB", "B"), ("S", "IOE", "E"), ("S", "IOBE", "B"), ("S", "IOBES", "S")
-])
-def test_get_affix(iobes: str, scheme: str, affix: str) -> None:
-    """
-    test get_affix
-    :param iobes: original affix
-    :type iobes: str
-    :param scheme: target scheme
-    :type scheme: str
-    :param affix: modified affix
-    :type affix: str
-    """
-    assert get_affix(iobes, scheme) == affix
-
-
-@pytest.mark.parametrize("label, boc, eoc, affix", [
-    (None, 0, 0, "O"),
-    (None, 1, 0, "O"),
-    (None, 0, 1, "O"),
-    (None, 1, 1, "O"),
-    ("X", 0, 0, "I"),
-    ("X", 1, 0, "B"),
-    ("X", 0, 1, "E"),
-    ("X", 1, 1, "S"),
-])
-def test_gen_affix(label: str | None, boc: int, eoc: int, affix: str) -> None:
-    """
-    test get_affix
-    :param label: token label
-    :type label: str | None
-    :param boc: token boc flag
-    :type boc: int
-    :param eoc: token eoc flag
-    :type eoc: int
-    :param affix: token affix
-    :type affix: str
-    """
-    assert affix == gen_affix(label, bool(boc), bool(eoc), scheme="IOBES")
-
-
-# Check Tests (all test check_affix)
-def test_check_scheme(data_schemes: dict[str, list[list[str]]]) -> None:
-    """
-    test check scheme
-    :param data_schemes: scheme-specific tag sequences
-    :type data_schemes: dict[str, list[list[str]]]
-    """
-    for _, seq_list in data_schemes.items():
-        for seq in seq_list:
-            check_scheme(parse_tags(seq))
-
-    # error test
-    error_seq_list = [['0'], ['B-X', 'I-X', 'L-X'], ['O', 'U-X', 'O']]
-    for seq in error_seq_list:
-        with pytest.raises(ValueError):
-            check_scheme(parse_tags(seq))
-
-
-def test_check_morphs() -> None:
-    """ test check morphs """
-    morphs_pass = [
-        {"B": "B", "I": "I", "L": "E", "O": "O", "U": "S"},
-        {"B": "B", "M": "I", "W": "S", "E": "E", "O": "O"}
-    ]
-
-    morphs_fail = [{v: k for k, v in m.items()} for m in morphs_pass]
-
-    for morphs in morphs_pass:
-        check_morphs(morphs)
-
-    for morphs in morphs_fail:
-        with pytest.raises(ValueError):
-            check_morphs(morphs)
+    assert [outs] == reaffix([data], morphs=morphs)
 
 
 # Conversion Tests
@@ -499,28 +383,41 @@ def test_convert(data_schemes: dict[str, list[list[str]]]) -> None:
                 continue
 
             for i_seq, o_seq in zip(i_seq_list, o_seq_list):
-                assert convert(parse_tags(i_seq), o_scheme) == parse_tags(o_seq)
+                assert convert(parse(i_seq), o_scheme) == parse(o_seq)
 
 
-# API Function Tests
+# Core Function Tests
+def test_remap(data_tags: list[list[str]], data_mods: list[list[str]]) -> None:
+    """
+    test sequence re-labeling & re-affixing
+    :param data_tags: original tag sequences
+    :type data_tags: list[list[str]]
+    :param data_mods: modified tag sequences
+    :type data_mods: list[list[str]]
+    """
+    labels = {"X": "A", "Y": None}
+    morphs = {"B": "F", "I": "M"}
+    for tags, mods in zip(data_tags, data_mods, strict=True):
+        assert mods == remap(tags, labels=labels, morphs=morphs)
+        assert parse(mods) == remap(parse(tags), labels=labels, morphs=morphs)
+
+
+def test_chunk(data_tags: list[list[str]],
+               data_chunks: list[list[tuple[str, int, int]]]
+               ) -> None:
+    """
+    test chunk & get_chunks
+    :param data_tags: tag test cases
+    :type data_tags: list[list[str]]
+    :param data_chunks: reference chunks
+    :type data_chunks: list[list[tuple[str, int, int]]]
+    """
+    for tags, chunks in zip(data_tags, data_chunks):
+        assert chunks == chunk(tags)
+
+
 def test_parse_merge() -> None:
     """ test parse/merge """
     # BILOU tag sequence with affix errors (chunks are fine)
-    tokens = ["O", "I-X", "L-X", "O", "U-Y"]
-    labels = {"X": "A", "Y": None}
-    morphs = {"U": "S", "L": "E"}
-    scheme = "IOBES"
-
-    with pytest.raises(ValueError):
-        parse(tokens)
-
-    assert merge(parse(tokens, morphs=morphs)) == ["O", "I-X", "E-X", "O", "S-Y"]
-    assert merge(parse(tokens, morphs=morphs, labels=labels)) == ["O", "I-A", "E-A", "O", "O"]
-
-    result = parse(tokens, morphs=morphs, labels=labels, scheme=scheme)
-
-    assert merge(result) == ["O", "B-A", "E-A", "O", "O"]
-
-    assert merge(result,
-                 labels={"A": "X"}, morphs={"I": "M", "B": "F", "E": "E"}, scheme="IOB",
-                 kind="suffix", glue=".", otag="0") == ["0", "X.F", "X.M", "0", "0"]
+    tags = ["O", "I-X", "L-X", "O", "U-Y"]
+    assert tags == merge(parse(tags))

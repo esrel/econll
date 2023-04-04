@@ -11,8 +11,8 @@ from econll.parser import get_coc_boc, get_coc_eoc
 from econll.parser import relabel, reaffix, convert
 
 
-@pytest.fixture
-def transitions() -> list[tuple[tuple[str | None, str], tuple[str | None, str]]]:
+@pytest.fixture(name='transitions')
+def fixture_transitions() -> list[tuple[tuple[str | None, str], tuple[str | None, str]]]:
     """
     possible transitions: ((prev_label, prev_affix), (curr_label, curr_affix))
     - otag + tag
@@ -78,8 +78,8 @@ def transitions() -> list[tuple[tuple[str | None, str], tuple[str | None, str]]]
     ]
 
 
-@pytest.fixture
-def transitions_boc() -> list[bool]:
+@pytest.fixture(name='transitions_boc')
+def fixture_transitions_boc() -> list[bool]:
     """
     beginning-of-chunk (boc) flags for transitions
     :return: boc flags
@@ -102,8 +102,8 @@ def transitions_boc() -> list[bool]:
     ]
 
 
-@pytest.fixture
-def transitions_eoc() -> list[bool]:
+@pytest.fixture(name='transitions_eoc')
+def fixture_transitions_eoc() -> list[bool]:
     """
     end-of-chunk (eoc) flags for transitions
     :return: eoc flags
@@ -126,8 +126,8 @@ def transitions_eoc() -> list[bool]:
     ]
 
 
-@pytest.fixture
-def transitions_coc() -> list[bool]:
+@pytest.fixture(name='transitions_coc')
+def fixture_transitions_coc() -> list[bool]:
     """
     change-of-chunk with the same label (coc) flags for transitions
     :return: coc flags
@@ -151,8 +151,8 @@ def transitions_coc() -> list[bool]:
 
 
 # Tag Parsing/Merging Test Cases
-@pytest.fixture
-def tag_formats() -> list[dict[str, str]]:
+@pytest.fixture(name='tag_formats')
+def fixture_tag_formats() -> list[dict[str, str]]:
     """
     tag parsing formats
     :return: tag parsing parameter dicts
@@ -177,8 +177,8 @@ def tag_formats() -> list[dict[str, str]]:
     ]
 
 
-@pytest.fixture
-def tag_test_sample() -> list[tuple[str, tuple[str | None, str]]]:
+@pytest.fixture(name='tag_test_sample')
+def fixture_tag_test_sample() -> list[tuple[str, tuple[str | None, str]]]:
     """
     tag test case pairs
     :return: tag tests
@@ -194,8 +194,8 @@ def tag_test_sample() -> list[tuple[str, tuple[str | None, str]]]:
     ]
 
 
-@pytest.fixture
-def tag_test_result() -> list[list[int]]:
+@pytest.fixture(name='tag_test_result')
+def fixture_tag_test_result() -> list[list[int]]:
     """
     tag parsing/merging outcomes
     :return: outcome codes

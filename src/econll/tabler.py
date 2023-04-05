@@ -25,7 +25,9 @@ def report(class_scores: dict[str, tuple[float, float, float]],
            class_counts: dict[str, tuple[int, int, int]],
            total_scores: dict[str, tuple[float, float, float]] = None,
            total_counts: dict[str, tuple[int, int, int]] = None,
+           /,
            title: str = None,
+           *,
            digits: int = 4,
            colsep: str = "\t"
            ) -> str:
@@ -133,6 +135,7 @@ def format_cell(value: str | int | float,
 
 def format_rows(scores: dict[str, tuple[float, float, float]],
                 counts: dict[str, tuple[int, int, int]],
+                /, *,
                 digits: int = 4,
                 str_width: int = 10, num_width: int = 6, int_width: int = 6
                 ) -> list[list[str]]:

@@ -12,7 +12,7 @@ functions:
     - compute_match_stats -- compute (total) gold/pred/true counts for any 2 sequences
 
     - score       -- compute pre/rec/f1s from gold/pred/true counts
-    - score_stats -- compute class-level pre/rec/f1s + micro & macro averages from class-level counts
+    - score_stats -- compute per class pre/rec/f1s + micro & macro averages from class-level counts
 
 .. todo::
     - add weighted average ?

@@ -22,7 +22,7 @@ __all__ = [
     # parser
     'parse', 'merge', 'chunk', 'remap',
     # scorer
-    # 'chunkeval',
+    'tokeneval', 'chunkeval',
     # tabler
     'report',
     # indexer

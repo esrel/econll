@@ -47,7 +47,11 @@ def fixture_total_scores() -> dict[str, tuple[float, float, float]]:
     :return: total pre/rec/f1s scores (micro & macro)
     :rtype: dict[str, tuple[float, float, float]]
     """
-    return {"micro": (0.67, 0.67, 0.67), "macro": (0.75, 0.75, 0.75)}
+    return {
+        "micro": (0.67, 0.67, 0.67),
+        "macro": (0.75, 0.75, 0.75),
+        "weighted": (0.67, 0.67, 0.67)
+    }
 
 
 def test_score(class_counts: dict[str, tuple[int, int, int]],

@@ -159,7 +159,7 @@ def format_rows(scores: dict[str, tuple[float, float, float]],
     return [([format_cell(y, width=str_width)] +
              [format_cell(v, width=num_width, align=">", digits=digits) for v in class_scores] +
              [format_cell(v, width=int_width, align=">") for v in counts.get(y, [])])
-            for y, class_scores in sorted(scores.items())]
+            for y, class_scores in scores.items()]
 
 
 def format_header(str_width: int = 10, num_width: int = 6, int_width: int = 6) -> list[str]:

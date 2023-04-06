@@ -4,6 +4,7 @@ import pytest
 
 from econll.indexer import index
 from econll.aligner import align
+from econll.aligner import xbase
 from econll.aligner import align_spans, scope_spans
 
 
@@ -76,3 +77,15 @@ def test_align() -> None:
                                ([3], [3]), ([4], [4]), ([5], [5])]
     assert align(tgt, tgt) == [([0], [0]), ([1], [1]), ([2], [2]),
                                ([3], [3]), ([4], [4]), ([5], [5])]
+
+
+def test_xbase() -> None:
+    """ test xbase """
+    alignment: list[tuple[list[int], list[int]]] = [([0, 1], [0, 1]),
+                                                    ([2], [2, 3]),
+                                                    ([3, 4], [4]),
+                                                    ([5], [5])]
+    bos: dict[int, int] = {0: 0, 2: 2, 4: 3, 5: 5}
+    eos: dict[int, int] = {2: 2, 4: 3, 5: 5, 6: 6}
+
+    assert xbase(alignment) == (bos, eos)

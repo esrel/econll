@@ -3,6 +3,7 @@ token sequence alignment functions
 
 functions:
     - align       -- compute alignment between two sequences of tokens
+    - xbase       -- compute bos & eos cross-base mapping from alignment
 
     - align_spans -- compute alignment between two sets of spans
     - scope_spans -- select spans within bos & eos indices
@@ -68,7 +69,7 @@ def align_spans(source: list[tuple[int, int]],
     :return: common being & end indices
     :rtype: list[tuple[int, int]]
 
-    :raise: ValueError
+    :raises ValueError: ValueError
     """
     if source == target:
         return source
@@ -100,3 +101,16 @@ def scope_spans(spans: list[tuple[int, int]], bos: int, eos: int) -> list[int]:
     :rtype: list[int]
     """
     return [i for i, (b, e) in enumerate(spans) if (b >= bos and e <= eos)]
+
+
+def xbase(alignment: list[tuple[list[int], list[int]]]) -> tuple[dict[int, int], dict[int, int]]:
+    """
+    compute bos & eos cross-base mapping from alignment
+    :param alignment: token-level alignment
+    :type alignment: list[tuple[list[int], list[int]]]
+    :return: cross-base bos & eos mapping
+    :rtype: list[tuple[list[int], list[int]]]
+    """
+    bos = {min(tgt): min(src) for src, tgt in alignment}
+    eos = {(max(tgt) + 1): (max(src) + 1) for src, tgt in alignment}
+    return bos, eos

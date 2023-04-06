@@ -1,8 +1,14 @@
 """
-Annotation Transfer Functions
+prediction transfer functions
 
-Functions:
-    - transfer -- align tokens & transfer label & affix
+functions:
+    - rebase -- re-base predicted tags to a source tokenization
+
+    - rebase_tokens -- rebase label-affix pairs w.r.t. alignment as IOBES
+    - rebase_chunks -- rebase chunks w.r.t. alignment
+
+    - affix_chunk   -- generate IOBES affixes for a chunk (w.r.t. length)
+    - token_chunk   -- generate label-affix pairs for a chunk
 """
 
 __author__ = "Evgeny A. Stepanov"
@@ -11,76 +17,107 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from econll.parser import parse_tags, merge_tags
-from econll.chunker import reduce_affix, expand_affix, reduce_label, expand_label
-from econll.consolidator import align
+from warnings import warn
+
+from econll.parser import merge, chunk, convert
+from econll.aligner import align, xbase
 
 
-def transfer(source: list[str],
-             target: list[tuple[str, str]],
-             **kwargs
-             ) -> list[str]:
+def rebase(source: list[str],
+           target: list[str],
+           values: list[str | tuple[str | None, str]],
+           tokens: str | list[str] = None,
+           scheme: str = "IOBES",
+           **kwargs
+           ) -> list[str | tuple[str | None, str]]:
     """
-    align two sequences of tokens & transfer tags from target to source
-    .. note::
-        transfer is done "maximally", i.e. if any of the aligned target tokens have a label,
-        it is transferred to the whole of the aligned source slice;
-        in case there are several labels, the label is None
-    :param source: source token sequence
+    rebase values (of the target) to source tokens
+    :param source: source token sequence (new base)
     :type source: list[str]
-    :param target: target token, tag tuples
-    :type target: list[tuple[str, str]]
-    :return: sequence of tags
+    :param target: target token sequence (old base)
+    :type target: list[str]
+    :param values: value sequence to rebase from target to source
+    :type values: list[str | tuple[str | None, str]]]
+    :param tokens: tokens for boundaries, defaults to None
+    :type tokens: str | list[str], optional
+    :param scheme: target scheme, defaults to 'IOBES'
+    :type scheme: str, optional
+    :return: rebased value sequence
+    :rtype: list[str | tuple[str | None, str]]]
+    """
+    assert len(target) == len(values)
+
+    if source == target:
+        return values
+
+    result = rebase_tokens(values, align(source, target, tokens))
+    result = convert(result, scheme=scheme)
+    return merge(result, **kwargs) if all(isinstance(x, str) for x in values) else result
+
+
+def rebase_chunks(chunks: list[tuple[str, int, int]],
+                  alignment: list[tuple[list[int], list[int]]]
+                  ) -> list[tuple[str, int, int]]:
+    """
+    rebase values (of the target) to source tokens
+    :param chunks: chunks to rebase from target to source
+    :type chunks: list[str | tuple[str | None, str]]]
+    :param alignment: token-level alignment
+    :type alignment: list[tuple[list[int], list[int]]]
+    :return: rebased chunks
+    :rtype: list[tuple[str, int, int]]
+    """
+    bos, eos = xbase(alignment)
+
+    if err := [(y, b, e) for y, b, e in chunks if not (b in bos and e in eos)]:
+        warn(f"removed chunks: {err}")
+
+    return [(y, bos.get(b), eos.get(e)) for y, b, e in chunks if (b in bos and e in eos)]
+
+
+def rebase_tokens(tokens: list[tuple[str | None, str]],
+                  alignment: list[tuple[list[int], list[int]]]
+                  ) -> list[tuple[str | None, str]]:
+    """
+    rebase values (of the target) to source tokens
+    :param tokens: tags or label-affix pairs to rebase
+    :type tokens: list[str | tuple[str | None, str]]
+    :param alignment: token-level alignment
+    :type alignment: list[tuple[list[int], list[int]]]
+    :return: rebased chunks
+    :rtype: list[tuple[str, int, int]]
+    """
+    result = [(None, "O")] * len(tokens)
+    chunks = chunk(tokens)
+
+    if chunks:
+        chunks = rebase_chunks(chunks, alignment)
+        _ = [result := (result[0:b] + token_chunk(y, b, e) + result[e:]) for y, b, e in chunks]
+
+    return result
+
+
+def affix_chunk(num: int) -> list[str]:
+    """
+    generate IOBES affix list for a chunk (assumes label is not None)
+    :param num: chunk length (number of affixes to generate)
+    :type num: int
+    :return: chunk affixes
     :rtype: list[str]
     """
-    tgt_token_list, tgt_preds_list = map(list, zip(*target))
-    tgt_label_list, tgt_affix_list = map(list, zip(*parse_tags(tgt_preds_list, **kwargs)))
-
-    alignment = align(source, tgt_token_list)
-
-    out_preds_list = []
-    for src_index_list, tgt_index_list in alignment:
-        out_label_list = expand_label(reduce_label([tgt_label_list[idx] for idx in tgt_index_list]),
-                                      len(src_index_list))
-        out_affix_list = expand_affix(reduce_affix([tgt_affix_list[idx] for idx in tgt_index_list]),
-                                      len(src_index_list))
-        out_preds_list.extend(merge_tags(list(zip(out_label_list, out_affix_list))))
-
-    return out_preds_list
+    return [] if num < 1 else ["S"] if num == 1 else (["B"] + ["I"] * (num - 2) + ["E"])
 
 
-def xfer(source: list[str],
-         target: list[tuple[str, str]],
-         **kwargs
-         ) -> list[str]:
+def token_chunk(label: str, bos: int, eos: int) -> list[tuple[str | None, str]]:
     """
-    align two sequences of tokens & transfer tags from target to source
-    .. note::
-        transfer is done "maximally", i.e. if any of the aligned target tokens have a label,
-        it is transferred to the whole of the aligned source slice;
-        in case there are several labels, the label is None
-    :param source: source token sequence
-    :type source: list[str]
-    :param target: target token, tag tuples
-    :type target: list[tuple[str, str]]
-    :return: sequence of tags
-    :rtype: list[str]
+    convert chunk into a sequence of label-affix pairs
+    :param label: chunk label
+    :type label: str
+    :param bos: chunk begin token index
+    :type bos: int
+    :param eos: chunk end token index
+    :type eos: int
+    :return: sequence of label-affix pairs
+    :rtype: list[tuple[str | None, str]]
     """
-    tgt_token_list, tgt_preds_list = map(list, zip(*target))
-    tgt_label_list, tgt_affix_list = map(list, zip(*parse_tags(tgt_preds_list, **kwargs)))
-
-    alignment = align(source, tgt_token_list)
-
-    out_preds_list = []
-    for src_index_list, tgt_index_list in alignment:
-
-        label = (tgt_label_list[tgt_index_list[0]] if len(tgt_index_list) == 1 else
-                 reduce_label([tgt_label_list[idx] for idx in tgt_index_list]))
-        affix = (tgt_affix_list[tgt_index_list[0]] if len(tgt_index_list) == 1 else
-                 reduce_label([tgt_affix_list[idx] for idx in tgt_index_list]))
-
-        out_label_list = [label] if len(src_index_list) == 1 else expand_label(label, len(src_index_list))
-        out_affix_list = [affix] if len(src_index_list) == 1 else expand_affix(affix, len(src_index_list))
-        out_preds_list.extend(merge_tags(list(zip(out_label_list, out_affix_list))))
-
-    return out_preds_list
+    return list(zip([label] * (eos - bos), affix_chunk(eos - bos), strict=True))

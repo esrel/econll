@@ -87,7 +87,9 @@ def rebase_tokens(tokens: list[tuple[str | None, str]],
     :return: rebased chunks
     :rtype: list[tuple[str, int, int]]
     """
-    result = [(None, "O")] * len(tokens)
+    assert len(tokens) == sum([len(tgt) for _, tgt in alignment])
+
+    result = [(None, "O")] * sum([len(src) for src, _ in alignment])
     chunks = chunk(tokens)
 
     if chunks:

@@ -1,17 +1,59 @@
 """
-span consolidation functions
+decision functions: to generate flat hypotheses
 
-Functions:
-    - consolidate       -- consolidate spans with predefined scoring
+functions:
+    - decide -- decide on the most probable sequence of labels w.r.t. scores
 
-    - consolidate_spans -- reduce overlapping spans to a single non-overlapping group
+    - select -- select a vector from a score matrix w.r.t. score vector
+    - rerank -- rerank a score matrix w.r.t.
+
     - group_spans       -- group spans into non-overlapping groups
+
+    - consolidate       -- consolidate spans with predefined scoring
+    - consolidate_spans -- reduce overlapping spans to a single non-overlapping group
 """
 
 __author__ = "Evgeny A. Stepanov"
 __email__ = "stepanov.evgeny.a@gmail.com"
 __status__ = "dev"
 __version__ = "0.1.0"
+
+
+def decide(data: list[list[tuple[str, float]]]) -> list[str]:
+    """
+    decide on a sequence of tags from a sequence tokens with all possible tags with scores
+    :param data: a sequence of tokens with all possible tags with scores
+    :type data: list[list[tuple[str, float]]]
+    :return: a sequence of tags
+    :rtype: list[str]
+    """
+    return [tag for tag, _ in [max(token, key=lambda x: x[1]) for token in data]]
+
+
+def select(matrix: list[list[float]], scores: list[float]) -> list[list[float]]:
+    """
+    select a hypothesis from a matrix of scores w.r.t. max of scores
+    :param matrix: hypotheses scores
+    :type matrix: list[list[float]]
+    :param scores: scores
+    :type scores: list[float]
+    :return: max hypothesis vector
+    :rtype: list[list[float]]
+    """
+    return max(zip(scores, matrix, strict=True))[1]
+
+
+def rerank(matrix: list[list[float]], scores: list[float]) -> list[list[float]]:
+    """
+    re-rank hypotheses matrix w.r.t. scores
+    :param matrix: hypotheses scores
+    :type matrix: list[list[float]]
+    :param scores: scores
+    :type scores: list[float]
+    :return: re-ranked hypotheses scores
+    :rtype: list[list[float]]
+    """
+    return [[weight * x for x in vector] for vector, weight in zip(matrix, scores, strict=True)]
 
 
 def consolidate(spans: list[tuple[int, int]],

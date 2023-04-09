@@ -1,96 +1,100 @@
+""" eCoNLL reader tests """
+
 import pytest
 
-from econll.reader import parse_tag
-from econll.reader import validate, validate_scheme_mapping
-from econll.reader import merge, split
-from econll.reader import read, save
-from econll.reader import load, dump
+from econll.reader import split, merge
 from econll.reader import get_field, get_text, get_refs, get_hyps, get_tags
+from econll.reader import check_fields
+from econll.reader import load, dump
 
 
-parse_tag_tests = [
-    # kind, glue, otag, scheme, tag, affix, label
-    ("prefix", "-", "O", {}, "O", "O", None),
-    ("prefix", "-", "O", {}, "B-X", "B", "X"),
-    ("prefix", "-", "O", {}, "I-X", "I", "X"),
-    ("suffix", ".", "-O-", {"L": "E", "U": "S", "-O-": "O"}, "-O-", "O", None),
-    ("suffix", ".", "-O-", {"L": "E", "U": "S", "-O-": "O"}, "X.B", "B", "X"),
-    ("suffix", ".", "-O-", {"L": "E", "U": "S", "-O-": "O"}, "X.I", "I", "X"),
-    ("suffix", ".", "-O-", {"L": "E", "U": "S", "-O-": "O"}, "X.L", "E", "X"),
-    ("suffix", ".", "-O-", {"L": "E", "U": "S", "-O-": "O"}, "X.S", "S", "X"),
-    # errors: not raised
-    ("prefix", "-", "O", {}, "I.X", "I.X", None)
-]
+def test_merge_split(data_text: list[list[str]],
+                     data_tags: list[list[str]],
+                     data_hyps: list[list[str]]
+                     ) -> None:
+    """
+    test split & merge
+    :param data_text: random text tokens
+    :type data_text: list[list[str]]
+    :param data_tags: references
+    :type data_tags: list[list[str]]
+    :param data_hyps: hypotheses
+    :type data_hyps: list[list[str]]
+    """
+    data = merge(data_text, data_tags, data_hyps)
+    text, refs, hyps = split(data)
 
+    assert text == data_text
+    assert refs == data_tags
+    assert hyps == data_hyps
 
-@pytest.mark.parametrize("kind, glue, otag, scheme, tag, affix, label", parse_tag_tests)
-def test_parse_tag(kind, glue, otag, scheme, tag, label, affix):
-    assert affix, label == parse_tag(tag, kind=kind, glue=glue, otag=otag, scheme=scheme)
-
-
-def test_merge_split(conll_text, conll_refs, conll_hyps):
-
-    conll_data = merge(conll_text, conll_refs, conll_hyps)
-
-    text, refs, hyps = split(conll_data)
-
-    assert conll_text == text
-    assert conll_refs == refs
-    assert conll_hyps == hyps
-
-
-def test_read_save(conll_text, conll_refs, conll_hyps):
-    path = "/tmp/conll.txt"
-
-    conll_data = merge(conll_text, conll_refs, conll_hyps)
-
-    save(conll_data, path)
-
-    data = read(path)
-
-    assert conll_data == data
-
-
-def test_load_dump(conll_refs):
-
-    refs = load(conll_refs)
-    tags = dump(refs)
-
-    assert conll_refs == tags
-
-
-def test_get_field(conll_text, conll_refs, conll_hyps):
-
-    conll_data = merge(conll_text, conll_refs, conll_hyps)
-
-    assert conll_text == get_text(conll_data) == get_field(conll_data, 0)
-    assert conll_refs == get_refs(conll_data) == get_field(conll_data, -2)
-    assert conll_hyps == get_hyps(conll_data) == get_field(conll_data, -1) == get_tags(conll_data)
-
-
-# already tested with ``read``; testing errors
-def test_validate(conll_text, conll_refs, conll_hyps):
-
-    conll_data = merge(conll_text, conll_refs, conll_hyps)
-
-    # pass
-    validate(conll_data)
-
-    # modify token 2 of block 5 adding extra element
-    conll_data[5][2] = (*conll_data[5][2], "extra")
-
-    # fail
+    # error tests
+    # one block is missing
     with pytest.raises(ValueError):
-        validate(conll_data)
+        merge(data_text[:-1], data_tags, data_hyps)
+
+    with pytest.raises(ValueError):
+        data_text[-1] = data_text[-1][:-1]  # remove one block token
+        merge(data_text, data_tags, data_hyps)
 
 
-def test_validate_scheme_mapping():
-    scheme_pass = [{"L": "E", "U": "S"}, {"B": "B", "I": "I", "L": "E", "O": "O", "U": "S"}]
-    scheme_fail = [{"E": "L", "S": "U"}, {"B": "B", "I": "I", "E": "L", "O": "O", "S": "U"}]
+def test_get_field(data_text: list[list[str]],
+                   data_tags: list[list[str]],
+                   data_hyps: list[list[str]]
+                   ) -> None:
+    """
+    test get field & aliases
+    :param data_text: random text tokens
+    :type data_text: list[list[str]]
+    :param data_tags: references
+    :type data_tags: list[list[str]]
+    :param data_hyps: hypotheses
+    :type data_hyps: list[list[str]]
+    """
 
-    for sch in scheme_pass:
-        validate_scheme_mapping(sch)
+    data = merge(data_text, data_tags, data_hyps)
 
-    for sch in scheme_fail:
-        with pytest.raises(ValueError):
-            validate_scheme_mapping(sch)
+    assert data_text == get_text(data) == get_field(data, 0)
+    assert data_tags == get_refs(data) == get_field(data, -2)
+    assert data_hyps == get_hyps(data) == get_tags(data) == get_field(data, -1)
+
+
+def test_check_fields(data_text: list[list[str]],
+                      data_tags: list[list[str]],
+                      data_hyps: list[list[str]]
+                      ) -> None:
+    """
+    test check_fields
+    :param data_text: random text tokens
+    :type data_text: list[list[str]]
+    :param data_tags: references
+    :type data_tags: list[list[str]]
+    :param data_hyps: hypotheses
+    :type data_hyps: list[list[str]]
+    """
+    data = merge(data_text, data_tags, data_hyps)
+    for block in data:
+        check_fields(block)
+
+
+def test_load_dump(data_text: list[list[str]],
+                   data_tags: list[list[str]],
+                   data_hyps: list[list[str]]
+                   ) -> None:
+    """
+    test load & save
+    :param data_text: random text tokens
+    :type data_text: list[list[str]]
+    :param data_tags: references
+    :type data_tags: list[list[str]]
+    :param data_hyps: hypotheses
+    :type data_hyps: list[list[str]]
+    """
+    path: str = "/tmp/conll.txt"
+    data = merge(data_text, data_tags, data_hyps)
+
+    dump(data, path)
+
+    temp = load(path)
+
+    assert data == temp

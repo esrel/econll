@@ -8,7 +8,7 @@ from econll.parser import parse_tag, merge_tag
 from econll.parser import isa_boc, isa_eoc, isa_coc
 from econll.parser import get_boc, get_eoc
 from econll.parser import get_coc_boc, get_coc_eoc
-from econll.parser import relabel, reaffix, convert
+from econll.parser import relabel, reaffix
 
 
 @pytest.fixture(name='transitions')
@@ -366,24 +366,6 @@ def test_reaffix(data: tuple[str | None, str], outs: tuple[str | None, str]) -> 
     """
     morphs = {"U": "B", "L": "I"}  # BILOU to IOB
     assert [outs] == reaffix([data], morphs=morphs)
-
-
-# Conversion Tests
-def test_convert(data_schemes: dict[str, list[list[str]]]) -> None:
-    """
-    test tag conversion
-    :param data_schemes: scheme-specific tag sequences
-    :type data_schemes: dict[str, list[list[str]]]
-    """
-    for i_scheme, i_seq_list in data_schemes.items():
-        for o_scheme, o_seq_list in data_schemes.items():
-
-            # IO conversion cannot be matched since it merges consecutive chunks
-            if i_scheme != o_scheme and i_scheme == "IO":
-                continue
-
-            for i_seq, o_seq in zip(i_seq_list, o_seq_list):
-                assert convert(parse(i_seq), o_scheme) == parse(o_seq)
 
 
 # Core Function Tests

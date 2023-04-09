@@ -40,3 +40,7 @@
 ## Hypothesis Selection/Computation
 
 ### `decisor`
+
+## Utilities
+
+### `schemer`

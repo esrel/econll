@@ -127,4 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-/src/temp/
+
+# local
+/temp/
+.DS_Store

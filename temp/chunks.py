@@ -8,7 +8,7 @@ __version__ = "0.1.3"
 
 from dataclasses import dataclass, asdict
 
-from econll.tokens import Token
+from temp.tokens import Token
 
 
 @dataclass

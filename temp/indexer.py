@@ -6,7 +6,7 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from econll.spans import Token
+from temp.spans import Token
 
 
 def index(tokens: str | list[str],

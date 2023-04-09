@@ -6,7 +6,7 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from econll.spans import Token, Chunk
+from temp.spans import Token, Chunk
 
 
 def decide(object_list: list[list[Token | Chunk]], weight_list: list[float] = None) -> list[Token | Chunk]:

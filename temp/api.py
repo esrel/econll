@@ -6,9 +6,9 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from econll.spans import Token
-from econll.chunker import affix_tokens, chunk_tokens, remap_tokens, parse_tokens, merge_tokens
-from econll.indexer import clean_tokens, index_tokens
+from temp.spans import Token
+from temp.chunker import affix_tokens, chunk_tokens, remap_tokens, parse_tokens, merge_tokens
+from temp.indexer import clean_tokens, index_tokens
 
 
 def index(tokens: list[str],

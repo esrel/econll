@@ -11,9 +11,10 @@ from econll.parser import parse, merge, chunk, remap
 from econll.scorer import tokeneval, chunkeval
 from econll.tabler import report
 from econll.indexer import index
-from econll.aligner import align
+from econll.aligner import align, xbase
 from econll.rebaser import rebase
-from econll.consolidator import consolidate
+from econll.schemer import guess, alter
+from econll.decisor import decide, select, rerank, consolidate
 
 
 __all__ = [
@@ -28,9 +29,11 @@ __all__ = [
     # indexer
     'index',
     # aligner
-    'align',
+    'align', 'xbase',
     # rebaser
     'rebase',
-    # ???
-    'consolidate',
+    # decisor
+    'decide', 'select', 'rerank', 'consolidate',
+    # schemer
+    'guess', 'alter'
 ]

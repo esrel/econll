@@ -17,17 +17,16 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from warnings import warn
-
-from econll.parser import merge, chunk, convert
+from econll.parser import merge, chunk
 from econll.aligner import align, xbase
+from econll.schemer import alter, guess
 
 
 def rebase(source: list[str],
            target: list[str],
            values: list[str | tuple[str | None, str]],
            tokens: str | list[str] = None,
-           scheme: str = "IOBES",
+           scheme: str = None,
            **kwargs
            ) -> list[str | tuple[str | None, str]]:
     """
@@ -40,7 +39,7 @@ def rebase(source: list[str],
     :type values: list[str | tuple[str | None, str]]]
     :param tokens: tokens for boundaries, defaults to None
     :type tokens: str | list[str], optional
-    :param scheme: target scheme, defaults to 'IOBES'
+    :param scheme: target scheme, defaults to None
     :type scheme: str, optional
     :return: rebased value sequence
     :rtype: list[str | tuple[str | None, str]]]
@@ -51,7 +50,7 @@ def rebase(source: list[str],
         return values
 
     result = rebase_tokens(values, align(source, target, tokens))
-    result = convert(result, scheme=scheme)
+    result = alter(result, scheme=(scheme or guess(values, **kwargs)))
     return merge(result, **kwargs) if all(isinstance(x, str) for x in values) else result
 
 
@@ -69,8 +68,7 @@ def rebase_chunks(chunks: list[tuple[str, int, int]],
     """
     bos, eos = xbase(alignment)
 
-    if err := [(y, b, e) for y, b, e in chunks if not (b in bos and e in eos)]:
-        warn(f"removed chunks: {err}")
+    # errors = [(y, b, e) for y, b, e in chunks if not (b in bos and e in eos)]
 
     return [(y, bos.get(b), eos.get(e)) for y, b, e in chunks if (b in bos and e in eos)]
 

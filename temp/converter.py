@@ -6,8 +6,8 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from econll.spans import Token
-from econll.chunker import gen_affix
+from temp.spans import Token
+from temp.chunker import gen_affix
 
 
 def reaffix_tokens(tokens: list[Token], scheme: str = "IOB") -> list[Token]:

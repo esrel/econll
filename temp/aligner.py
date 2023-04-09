@@ -6,7 +6,7 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
-from econll.tokens import Token
+from temp.tokens import Token
 
 
 # token-to-token alignment methods

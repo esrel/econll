@@ -17,8 +17,7 @@ functions:
 
     # transformation functions
     - relabel -- remap labels
-    - reaffix -- remap affixes to IOBES scheme
-    - convert -- convert affixes to a target scheme (among the supported)
+    - reaffix -- remap affixes
 
 shared params:
     # tag format
@@ -30,7 +29,6 @@ shared params:
     - labels: dict[str, str | None] -- mapping for source to target label set;
                                        if target is None, it is removed
     - morphs: dict[str, str]        -- mapping for source to target affix set
-    - scheme: str                   -- target scheme to convert among supported chunk coding schemes
 """
 
 __author__ = "Evgeny A. Stepanov"
@@ -277,61 +275,6 @@ def get_coc_eoc(data: list[tuple[str | None, str]], **kwargs) -> list[bool]:
     :rtype: list[bool]
     """
     return [isa_coc(*prev, *curr, **kwargs) for prev, curr in pairwise(data)] + [False]
-
-
-def convert(data: list[str | tuple[str | None, str]],
-            scheme: str = "IOBES",
-            **kwargs
-            ) -> list[str | tuple[str | None, str]]:
-    """
-    convert tagging scheme (update affixes)
-    :param data: token tags or label-affix pairs
-    :type data: list[str | tuple[str | None, str]]
-    :param scheme: target scheme, defaults to 'IOBES'
-    :type scheme: str, optional
-    :return: converted tags or label-affix pairs
-    :rtype: list[str | tuple[str | None, str]]
-    :raises ValueError: if the scheme is unsupported
-    """
-    coding = scheme
-    scheme = scheme.removesuffix("1")
-
-    # check scheme
-    if errors := {affix for affix in scheme if affix not in "IOBES"}:
-        raise ValueError(f"Unsupported Scheme Affix(es): {errors}")
-
-    # affix: (int(boc), int(eoc), int(label is not None))
-    mapping = {"I": (0, 0, 1), "O": (0, 0, 0), "B": (1, 0, 1), "E": (0, 1, 1), "S": (1, 1, 1)}
-    schemes = {
-        "IO":    {"I": "I", "O": "O", "B": "I", "E": "I", "S": "I"},
-        "IOB":   {"I": "I", "O": "O", "B": "B", "E": "I", "S": "B"},
-        "IOE":   {"I": "I", "O": "O", "B": "I", "E": "E", "S": "E"},
-        "IOBE":  {"I": "I", "O": "O", "B": "B", "E": "E", "S": "B"},
-        "IOBES": {"I": "I", "O": "O", "B": "B", "E": "E", "S": "S"},
-    }
-
-    morphs = {codes: schemes.get(scheme, {}).get(affix, affix) for affix, codes in mapping.items()}
-
-    tokens = parse(data, **kwargs) if all(isinstance(token, str) for token in data) else data
-
-    tokens = [(label, morphs.get((boc, eoc, int(label is not None)), affix))
-              for (label, affix), boc, eoc
-              in zip(tokens,
-                     list(map(int, get_boc(tokens))),
-                     list(map(int, get_eoc(tokens))),
-                     strict=True)]
-
-    # IOB1: B -> I, if not coc
-    tokens = ([(label, ("I" if (affix == "B" and boc is False) else affix))
-               for (label, affix), boc in zip(tokens, get_coc_boc(tokens), strict=True)]
-              if coding == "IOB1" else tokens)
-
-    # IOE1: E -> I, if not coc
-    tokens = ([(label, ("I" if (affix == "E" and eoc is False) else affix))
-               for (label, affix), eoc in zip(tokens, get_coc_eoc(tokens), strict=True)]
-              if coding == "IOE1" else tokens)
-
-    return merge(tokens, **kwargs) if all(isinstance(token, str) for token in data) else tokens
 
 
 # alias functions

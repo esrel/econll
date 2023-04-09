@@ -9,14 +9,14 @@ def read(path):
 
 setup(
     name='econll',
+    url='https://github.com/esrel/econll',
     version='0.1.2',
-    description='Extended CoNLL Sequence Labeling Evaluation Utilities',
+    author='Evgeny A. Stepanov',
+    author_email='stepanov.evgeny.a@gmail.com',
+    description='Extended CoNLL Utilities for Shallow Parsing',
     readme="README.md",
     long_description=read('README.md'),
     long_description_content_type="text/markdown",
-    url='https://github.com/esrel/econll',
-    author='Evgeny A. Stepanov',
-    author_email='stepanov.evgeny.a@gmail.com',
     package_dir={'': "src"},
     packages=find_packages('src'),
     classifiers=['Development Status :: 2 - Pre-Alpha'],

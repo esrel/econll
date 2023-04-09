@@ -1,14 +1,46 @@
-# TODOs
+# eCoNLL TODOs
 
-## Processing
+## General Functionality
 
-- Add possibility to convert CoNLL data to JSON (e.g. `rasa`)
-  Requires, token indexing for raw text.
+- ADD baselines
+  - standard baselines: majority, random, chance
+  - computed baselines:
+    - MLE, MLE + Priors
+    - 1-gram, 2-gram for transitions
 
-## Reporting
+## I/O & Data Formats
 
-- Modify `print_table` to support `stats` reporting & `score` reporting at the same time.
-  Requires, variable number of columns and cell types, which are currently fixed.
-  **Alternative**: switch to `beautifultable`
-- Fix header cell alignment for numeric fields for `md` table.
-- Add LaTeX table style
+### `reader`
+
+- ADD json/jsonl format support
+- ADD CoNLL-JSON data conversion (e.g. `rasa` NLU)
+
+### `parser`
+
+## Evaluation
+
+### `scorer`
+
+- ADD partial span match evaluation (extend `compute_spans_stats`)
+
+### `tabler`
+
+## Hypotheses & Reference Alignment
+
+### `indexer`
+- ADD indexing (`index`) with token substitutions (Levenshtein over tokens) for alignment
+
+### `aligner`
+
+### `rebaser`
+
+- FIX removed chunks warnings: improve informativeness (`UserWarning: removed chunks: [('y', 2, 3)]`)
+- ADD tokens to strip from a chunk span for `rebase_chunks`
+
+## Hypothesis Selection/Computation
+
+### `decisor`
+
+## Utilities
+
+### `schemer`

@@ -99,7 +99,7 @@ Similar to token-level evaluation, it is possible to evaluate segmentation indep
 This is achieved ignoring the `chunk` label, e.g. by converting all of them to a single label. 
 
 
-## Why `econll`?
+## Why **eCoNLL**?
 
 Token-level evaluation is readily available from a number of packages, 
 and can be easily computed using `scikit-learn`'s `classification_report`, for instance.
@@ -158,8 +158,8 @@ Tag Format Arguments:
 #### Evaluation
 
 ```commandline
-python -m econll evaluate -i IFILE
-python -m econll evaluate -i IFILE -r REFS
+python -m econll evaluate -d DATA
+python -m econll evaluate -d DATA -r REFS
 ```
 
 ## Versioning

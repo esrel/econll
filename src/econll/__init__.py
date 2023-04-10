@@ -8,6 +8,7 @@ __version__ = "0.2.0"
 
 from econll.reader import load, dump
 from econll.parser import parse, merge, chunk, remap
+from econll.xcoder import xcode
 from econll.scorer import tokeneval, chunkeval
 from econll.tabler import report
 from econll.indexer import index
@@ -35,5 +36,7 @@ __all__ = [
     # decisor
     'decide', 'select', 'rerank', 'consolidate',
     # schemer
-    'guess', 'alter'
+    'guess', 'alter',
+    # xcoder
+    'xcode'
 ]

@@ -6,9 +6,6 @@ functions:
 
     - rebase_tokens -- rebase label-affix pairs w.r.t. alignment as IOBES
     - rebase_chunks -- rebase chunks w.r.t. alignment
-
-    - affix_chunk   -- generate IOBES affixes for a chunk (w.r.t. length)
-    - token_chunk   -- generate label-affix pairs for a chunk
 """
 
 __author__ = "Evgeny A. Stepanov"
@@ -18,6 +15,7 @@ __version__ = "0.1.0"
 
 
 from econll.parser import merge, chunk
+from econll.xcoder import xcode
 from econll.aligner import align, xbase
 from econll.schemer import alter, guess
 
@@ -87,37 +85,9 @@ def rebase_tokens(tokens: list[tuple[str | None, str]],
     """
     assert len(tokens) == sum(len(tgt) for _, tgt in alignment)
 
-    result = [(None, "O")] * sum(len(src) for src, _ in alignment)
+    length = sum(len(src) for src, _ in alignment)
     chunks = chunk(tokens)
+    chunks = rebase_chunks(chunks, alignment) if chunks else []
+    tokens = xcode(chunks, length)
 
-    if chunks:
-        chunks = rebase_chunks(chunks, alignment)
-        _ = [result := (result[0:b] + token_chunk(y, b, e) + result[e:]) for y, b, e in chunks]
-
-    return result
-
-
-def affix_chunk(num: int) -> list[str]:
-    """
-    generate IOBES affix list for a chunk (assumes label is not None)
-    :param num: chunk length (number of affixes to generate)
-    :type num: int
-    :return: chunk affixes
-    :rtype: list[str]
-    """
-    return [] if num < 1 else ["S"] if num == 1 else (["B"] + ["I"] * (num - 2) + ["E"])
-
-
-def token_chunk(label: str, bos: int, eos: int) -> list[tuple[str | None, str]]:
-    """
-    convert chunk into a sequence of label-affix pairs
-    :param label: chunk label
-    :type label: str
-    :param bos: chunk begin token index
-    :type bos: int
-    :param eos: chunk end token index
-    :type eos: int
-    :return: sequence of label-affix pairs
-    :rtype: list[tuple[str | None, str]]
-    """
-    return list(zip([label] * (eos - bos), affix_chunk(eos - bos), strict=True))
+    return tokens

@@ -2,17 +2,15 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
-## 0.2.1 (TODO)
+## 0.2.1
 - added `xcoder` functions and tests
 
 ## 0.2.0
 - major refactoring
 - removed dataclasses (temporarily)
 - removed all but evaluation from CLI
-- updated README.md
-- updated TODOs.md
 - added CHANGELOG.md
-- added IOB1 & IOE1 support
+- added "IOB1" & "IOE1" support
 - added `aligner` functions and tests
 - added `rebaser` functions and tests
 - added `decisor` functions and tests

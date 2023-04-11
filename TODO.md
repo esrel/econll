@@ -1,5 +1,22 @@
 # eCoNLL TODOs
 
+
+- xcoder
+- xbaser
+- xfolder
+
+- scorer
+- schemer
+- learner -> ?
+
+- validator
+- designer
+- baseliner
+- modeller
+- splitter
+
+
+
 ## General Functionality
 
 - ADD baselines
@@ -7,6 +24,7 @@
   - computed baselines:
     - MLE, MLE + Priors
     - 1-gram, 2-gram for transitions
+- ADD data splitting (multi-label)
 
 ## I/O & Data Formats
 
@@ -44,3 +62,4 @@
 ## Utilities
 
 ### `schemer`
+### `xcoder`

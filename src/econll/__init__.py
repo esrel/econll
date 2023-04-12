@@ -3,7 +3,7 @@
 __author__ = "Evgeny A. Stepanov"
 __email__ = "stepanov.evgeny.a@gmail.com"
 __status__ = "dev"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 
 from econll.reader import load, dump

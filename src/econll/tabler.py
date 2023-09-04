@@ -116,7 +116,7 @@ def format_cell(value: str | int | float,
     :type value: str | int | float
     :param width: width of a cell, defaults to 10
     :type width: int, optional
-    :param align: alignment character; one of ['<', '>', '^', '=']; defaults to '<'
+    :param align: alignment character; one of {<, >, ^, =}; defaults to '<'
     :type align: str, optional
     :param digits: float precision, defaults to 4
     :type digits: int, optional

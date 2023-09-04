@@ -121,7 +121,7 @@ def check_fields(tokens: list[tuple[str, ...]]) -> None:
 def get_field(data: list[list[tuple[str, ...]]], field: int = None) -> list[list[str]]:
     """
     get a column (field) from data
-    :param data: data
+    :param data: tabular data
     :type data: list[list[tuple[str, ...]]]
     :param field: index of the field to get, defaults to -1
     :type field: int, optional

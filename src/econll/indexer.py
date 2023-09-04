@@ -74,7 +74,7 @@ def check_tokens(tokens: str | list[str],
     source = "".join(source if isinstance(source, list) else source.split())
 
     if tokens != source:
-        raise ValueError(f"character mismatch {tokens} != '{source}'")
+        raise ValueError(f"character mismatch '{tokens}' != '{source}'")
 
 
 def index_tokens(tokens: list[str],

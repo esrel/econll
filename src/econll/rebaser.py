@@ -58,7 +58,7 @@ def rebase_chunks(chunks: list[tuple[str, int, int]],
     """
     rebase values (of the target) to source tokens
     :param chunks: chunks to rebase from target to source
-    :type chunks: list[str | tuple[str | None, str]]]
+    :type chunks: list[str | tuple[str | None, str]]
     :param alignment: token-level alignment
     :type alignment: list[tuple[list[int], list[int]]]
     :return: rebased chunks

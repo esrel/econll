@@ -106,6 +106,7 @@ def merge_pieces(pieces: list[str], marker: str) -> list[str]:
     :rtype: list[str]
     """
     from functools import reduce
-    func = (lambda x, y: (x + y.removeprefix(marker) if y.startswith(marker) else x + " " + y))
-    text = reduce(func, pieces)
+    text = reduce((lambda x, y:
+                   (x + y.removeprefix(marker) if y.startswith(marker) else x + " " + y)),
+                  pieces)
     return text.split()

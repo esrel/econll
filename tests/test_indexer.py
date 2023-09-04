@@ -5,7 +5,7 @@
 
 import pytest
 
-from econll.indexer import clean_tokens, check_tokens, index_tokens
+from econll.indexer import clean_tokens, check_tokens, index_tokens, merge_pieces
 
 
 def test_clean_tokens() -> None:
@@ -63,3 +63,10 @@ def test_index_tokens() -> None:
 
     with pytest.raises(ValueError):
         index_tokens(errors, text)
+
+
+def test_merge_pieces() -> None:
+    """ test merge_pieces """
+    tokens = ['aaa', 'bbb', 'ccc', 'ddd']
+    pieces = ['aaa', 'bbb', 'c', '##c', '##c', 'ddd']
+    assert tokens == merge_pieces(pieces, '##')

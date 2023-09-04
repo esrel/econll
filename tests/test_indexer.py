@@ -67,6 +67,8 @@ def test_index_tokens() -> None:
 
 def test_merge_pieces() -> None:
     """ test merge_pieces """
-    tokens = ['aaa', 'bbb', 'ccc', 'ddd']
-    pieces = ['aaa', 'bbb', 'c', '##c', '##c', 'ddd']
-    assert tokens == merge_pieces(pieces, '##')
+    tokens: list[str] = ['aaa', 'bbb', 'ccc', 'ddd']
+    pieces: list[str] = ['[CLS]', 'aa', "##a", 'bbb', 'c', '##c', '##c', 'ddd', '[SEP]']
+    remove: list[str] = ['[CLS]', '[SEP]']
+    marker: str = '##'
+    assert tokens == merge_pieces(pieces, marker, remove)

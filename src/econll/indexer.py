@@ -95,18 +95,23 @@ def index_tokens(tokens: list[str],
     return [(idx := source.index(token, bos), bos := idx + len(token)) for token in tokens]
 
 
-def merge_pieces(pieces: list[str], marker: str) -> list[str]:
+def merge_pieces(pieces: list[str],
+                 marker: str,
+                 remove: list[str] = None,
+                 ) -> list[str]:
     """
     merge word-pieces into tokens
     :param pieces: word-pieces
     :type pieces: list[str]
     :param marker: sub-word marker
     :type marker: str
+    :param remove: tokens to remove, defaults to None
+    :type remove: list[str], optional
     :return: tokens
     :rtype: list[str]
     """
     from functools import reduce
     text = reduce((lambda x, y:
                    (x + y.removeprefix(marker) if y.startswith(marker) else x + " " + y)),
-                  pieces)
+                  [x for x in pieces if x not in (remove or [])])
     return text.split()

@@ -97,7 +97,7 @@ def index_tokens(tokens: list[str],
 
 def merge_pieces(pieces: list[str],
                  marker: str,
-                 remove: list[str] = None,
+                 remove: list[str] = None
                  ) -> list[str]:
     """
     merge word-pieces into tokens
@@ -111,7 +111,6 @@ def merge_pieces(pieces: list[str],
     :rtype: list[str]
     """
     from functools import reduce
-    text = reduce((lambda x, y:
-                   (x + y.removeprefix(marker) if y.startswith(marker) else x + " " + y)),
+    text = reduce((lambda x, y: x + (y.removeprefix(marker) if y.startswith(marker) else " " + y)),
                   [x for x in pieces if x not in (remove or [])])
     return text.split()

@@ -10,7 +10,7 @@ def read(path):
 setup(
     name='econll',
     url='https://github.com/esrel/econll',
-    version='0.2.0',
+    version='0.2.1',
     author='Evgeny A. Stepanov',
     author_email='stepanov.evgeny.a@gmail.com',
     description='Extended CoNLL Utilities for Shallow Parsing',
@@ -20,4 +20,5 @@ setup(
     package_dir={'': "src"},
     packages=find_packages('src'),
     classifiers=['Development Status :: 2 - Pre-Alpha'],
+    python_requires='>=3.10'
 )

@@ -74,7 +74,7 @@ def check_tokens(tokens: str | list[str],
     source = "".join(source if isinstance(source, list) else source.split())
 
     if tokens != source:
-        raise ValueError(f"character mismatch {tokens} != '{source}'")
+        raise ValueError(f"character mismatch '{tokens}' != '{source}'")
 
 
 def index_tokens(tokens: list[str],
@@ -93,3 +93,24 @@ def index_tokens(tokens: list[str],
     :rtype: list[tuple[int, int]]
     """
     return [(idx := source.index(token, bos), bos := idx + len(token)) for token in tokens]
+
+
+def merge_pieces(pieces: list[str],
+                 marker: str,
+                 remove: list[str] = None
+                 ) -> list[str]:
+    """
+    merge word-pieces into tokens
+    :param pieces: word-pieces
+    :type pieces: list[str]
+    :param marker: sub-word marker
+    :type marker: str
+    :param remove: tokens to remove, defaults to None
+    :type remove: list[str], optional
+    :return: tokens
+    :rtype: list[str]
+    """
+    from functools import reduce
+    text = reduce((lambda x, y: x + (y.removeprefix(marker) if y.startswith(marker) else " " + y)),
+                  [x for x in pieces if x not in (remove or [])])
+    return text.split()

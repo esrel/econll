@@ -34,7 +34,10 @@ def xcode(chunks: list[tuple[str, int, int]],
     """
     length = length or max([e for _, _, e in chunks] + [0])
     tokens = [(None, "O")] * length
-    _ = [tokens := (tokens[0:b] + token_chunk(y, b, e) + tokens[e:]) for y, b, e in chunks]
+
+    for label, bos, eos in chunks:
+        tokens = tokens[0:bos] + token_chunk(label, bos, eos) + tokens[eos:]
+
     tokens = tokens if scheme == "IOBES" else alter(tokens, scheme)
     return tokens
 

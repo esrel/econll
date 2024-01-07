@@ -113,8 +113,8 @@ def guess_scheme_one(tokens: list[str | tuple[str | None, str]], **kwargs) -> st
     """
     guess data chunk coding scheme (IO, IOB, IOE, IOBE, IOBES)
 
-    .. note:: `guess_scheme` does not support IOB1 & IOE1,
-              which can only be observed if input has 2 adjacent chunks with the same label
+    note:: `guess_scheme` does not support IOB1 & IOE1,
+    which can only be observed if input has 2 adjacent chunks with the same label
 
     :param tokens: a sequence of tags or label-affix pairs
     :type tokens: list[str | tuple[str | None, str]]

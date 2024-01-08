@@ -1,6 +1,6 @@
 # eCoNLL: Extended CoNLL Utilities for Shallow Parsing
 
-[![Supported Python Versions](https://img.shields.io/pypi/pyversions/econll.svg)](https://pypi.python.org/pypi/econll/)
+[![PyPI Python Version](https://img.shields.io/pypi/pyversions/econll.svg)](https://pypi.python.org/pypi/econll/)
 [![PyPI version](https://img.shields.io/pypi/v/econll.svg)](https://pypi.org/project/econll/)
 [![PyPI downloads](https://img.shields.io/pypi/dm/econll.svg)](https://pypistats.org/packages/econll/)
 

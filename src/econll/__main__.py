@@ -77,8 +77,8 @@ def add_argument_group_tf(parser: argparse.ArgumentParser) -> None:
 
 def main() -> None:
     """ main CLI function """
-    parser = create_argument_parser()
-    args = parser.parse_args()
+    pars = create_argument_parser()
+    args = pars.parse_args()
 
     # parameters
     df_params = {"separator": args.separator, "boundary": args.boundary, "docstart": args.docstart}

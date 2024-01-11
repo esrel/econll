@@ -2,6 +2,14 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.3
+- added conversion (`convert`) to/from CoNLL data (`conll`):
+  - YAML/Markdown format (`mdown`)
+  - JSON/JSONL parse (`parse`)
+
+## 0.2.2
+- added support for WordPiece tokenization indexing
+
 ## 0.2.1
 - added `xcoder` functions and tests
 
@@ -19,13 +27,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - added `docs` folder for documentation
 
 ## 0.1.2
-
 - installation fixes
 
 ## 0.1.1
-
 - installation fixes
 
 ## 0.1.0
-
 - initial release

@@ -41,15 +41,7 @@ def convert(data: dict | list,
     :return: data in specified format
     :rtype: dict | list
     """
-    if isa_conll(data):
-        temp = load_conll(data)
-    elif isa_parse(data):
-        temp = load_parse(data, keys=keys, maps=maps)
-    elif isa_mdown(data):
-        temp = load_mdown(data)
-    else:
-        raise TypeError("unsupported data format")
-
+    temp = load_dataset(data, keys=keys, maps=maps)
     if kind == "conll":
         outs = dump_conll(temp)
     elif kind == "parse":
@@ -58,6 +50,33 @@ def convert(data: dict | list,
         outs = dump_mdown(temp)
     else:
         raise ValueError(f"unsupported output format: {kind}")
+
+    return outs
+
+
+def load_dataset(data: dict | list,
+                 keys: list[str] = None,
+                 maps: dict[str, str] = None
+                 ) -> list[tuple]:
+    """
+    load dataset into [(query, label, spans)]
+    :param data: data
+    :type data: dict | list
+    :param keys: keys to form a span tuple from; defaults to None
+    :type keys: list[str], optional
+    :param maps: key mapping; defaults to None
+    :type maps: dict[str, str], optional
+    :return: [(query, label, spans)]
+    :rtype: list[tuple]
+    """
+    if isa_conll(data):
+        outs = load_conll(data)
+    elif isa_parse(data):
+        outs = load_parse(data, keys=keys, maps=maps)
+    elif isa_mdown(data):
+        outs = load_mdown(data)
+    else:
+        raise TypeError("unsupported data format")
 
     return outs
 

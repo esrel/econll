@@ -2,6 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.4
+- added CLI interface to `convert`
+- added reference label input for `convert` (reusing `refs`)
+- added JSONL, YAML, & LIST rile reading to `__main__`
+
 ## 0.2.3
 - added conversion (`convert`) to/from CoNLL data (`conll`):
   - YAML/Markdown format (`mdown`)

@@ -131,10 +131,15 @@ It is possible to run `econll` from command-line, as well as to import the metho
 
 ```
 usage: PROG [-h] -d DATA [-r REFS] 
-                         [--separator SEPARATOR] [--boundary BOUNDARY] [--docstart DOCSTART] 
-                         [--kind {prefix,suffix}] [--glue GLUE] [--otag OTAG]
+            [--separator SEPARATOR] [--boundary BOUNDARY] [--docstart DOCSTART] 
+            [--kind {prefix,suffix}] [--glue GLUE] [--otag OTAG]
+            [-f {conll,parse,mdown}] [-o OUTS]
+            [{eval,convert}]
 
 eCoNLL: Extended CoNLL Utilities
+
+positional arguments:
+  {eval,convert}        task to perform
 
 options:
   -h, --help            show this help message and exit
@@ -155,14 +160,27 @@ Tag Format Arguments:
   --glue GLUE           tag separator
   --otag OTAG           outside tag
 
+Data Conversion Arguments:
+  -f {conll,parse,mdown}, --form {conll,parse,mdown}
+                        output format (kind)
+  -o OUTS, --outs OUTS  path to output file
+
 ```
 
 #### Evaluation
 
 ```commandline
-python -m econll evaluate -d DATA
-python -m econll evaluate -d DATA -r REFS
+python -m econll -d DATA
+python -m econll eval -d DATA
+python -m econll eval -d DATA -r REFS
 ```
+
+#### Conversion
+
+```commandline
+python -m econll convert -d DATA -r LABELS -f FORMAT -o PATH
+```
+
 
 ## Versioning
 

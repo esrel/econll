@@ -15,6 +15,9 @@ __status__ = "dev"
 __version__ = "0.1.0"
 
 
+from functools import reduce
+
+
 def index(tokens: list[str],
           source: str = None,
           **kwargs
@@ -110,7 +113,6 @@ def merge_pieces(pieces: list[str],
     :return: tokens
     :rtype: list[str]
     """
-    from functools import reduce
     text = reduce((lambda x, y: x + (y.removeprefix(marker) if y.startswith(marker) else " " + y)),
                   [x for x in pieces if x not in (remove or [])])
     return text.split()

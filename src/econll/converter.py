@@ -20,13 +20,16 @@ import re
 
 from collections import defaultdict
 
-from econll import chunk, index, merge, xcode
+from econll.parser import chunk, merge
+from econll.indexer import index
+from econll.xcoder import xcode
 
 
 def convert(data: dict | list,
             kind: str = "conll",
             keys: list[str] = None,
-            maps: dict[str, str] = None
+            maps: dict[str, str] = None,
+            refs: list[str] = None
             ) -> dict | list:
     """
     covert data between formats
@@ -38,10 +41,12 @@ def convert(data: dict | list,
     :type keys: list[str], optional
     :param maps: key mapping; defaults to None
     :type maps: dict[str, str], optional
+    :param refs: reference labels; defaults to None
+    :type refs: list[str], optional
     :return: data in specified format
     :rtype: dict | list
     """
-    temp = load_dataset(data, keys=keys, maps=maps)
+    temp = load_dataset(data, keys=keys, maps=maps, refs=refs)
     if kind == "conll":
         outs = dump_conll(temp)
     elif kind == "parse":
@@ -56,7 +61,8 @@ def convert(data: dict | list,
 
 def load_dataset(data: dict | list,
                  keys: list[str] = None,
-                 maps: dict[str, str] = None
+                 maps: dict[str, str] = None,
+                 refs: list[str] = None,
                  ) -> list[tuple]:
     """
     load dataset into [(query, label, spans)]
@@ -66,11 +72,13 @@ def load_dataset(data: dict | list,
     :type keys: list[str], optional
     :param maps: key mapping; defaults to None
     :type maps: dict[str, str], optional
+    :param refs: reference labels; defaults to None
+    :type refs: list[str], optional
     :return: [(query, label, spans)]
     :rtype: list[tuple]
     """
     if isa_conll(data):
-        outs = load_conll(data)
+        outs = load_conll(data, refs=refs)
     elif isa_parse(data):
         outs = load_parse(data, keys=keys, maps=maps)
     elif isa_mdown(data):
@@ -93,15 +101,20 @@ def isa_conll(data: list[list[tuple]]) -> bool:
     return isinstance(data, list) and all(isinstance(x, list) for x in data)
 
 
-def load_conll(data: list[list[tuple]]) -> list[tuple[str, str, list[tuple]]]:
+def load_conll(data: list[list[tuple]],
+               refs: list[str] = None
+               ) -> list[tuple[str, str, list[tuple]]]:
     """
     load CoNLL dataset as list of tuples
     :param data: data
     :type data: list[list[tuple]]
+    :param refs: reference labels; defaults to None
+    :type refs: list[str], optional
     :return: [(query, label, spans)]
     :rtype: list[tuple]
     """
-    return [from_conll(item) for item in data]
+    refs = refs or [""] * len(data)
+    return [from_conll(item, label=label) for item, label in zip(data, refs, strict=True)]
 
 
 def dump_conll(data: list[tuple]) -> list[list[tuple]]:

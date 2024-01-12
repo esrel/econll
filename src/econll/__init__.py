@@ -16,6 +16,7 @@ from econll.aligner import align, xbase
 from econll.rebaser import rebase
 from econll.schemer import guess, alter
 from econll.decisor import decide, select, rerank, consolidate
+from econll.converter import convert
 
 
 __all__ = [
@@ -38,5 +39,7 @@ __all__ = [
     # schemer
     'guess', 'alter',
     # xcoder
-    'xcode'
+    'xcode',
+    # converter
+    'convert'
 ]

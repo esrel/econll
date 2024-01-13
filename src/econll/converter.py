@@ -2,166 +2,113 @@
 data conversion functions:
 
 functions:
-    - convert -- convert data from one format to another
-
-    - isa_*  -- check dataset in {conll, parse, mdown} format
-    - load_* -- load dataset in {conll, parse, mdown} format as [(query, label, spans)]
-    - dump_* -- make dataset in {conll, parse, mdown} format from [(query, label, spans)]
-    - from_* -- load example from {conll, parse, mdown} as (query, label, spans)
-    - make_* -- make a {conll, parse, mdown} format example from (query, label, span) in
+    - convert -- convert a span annotation example from one format to another
+    - from_* -- load an example from {conll, parse, mdown} format as (text, spans)
+    - make_* -- make an example in {conll, parse, mdown} format from (text, spans)
 
 support functions:
     - has_mdown  -- check if string has Markdown annotation
-    - tuple2dict -- convert a tuple into a dict w.r.t. keys
-    - dict2tuple -- convert a dict into a tuple w.r.t. keys
 """
 
 import re
-
-from collections import defaultdict
 
 from econll.parser import chunk, merge
 from econll.indexer import index
 from econll.xcoder import xcode
 
 
-def convert(data: dict | list,
+def convert(data: str | dict | list,
             kind: str = "conll",
+            *,
             keys: list[str] = None,
-            maps: dict[str, str] = None,
-            refs: list[str] = None
-            ) -> dict | list:
+            maps: list[str] = None,
+            text: str = None,
+            tokens: list[str] = None,
+            label: str = None,
+            ) -> str | dict | list:
     """
-    covert data between formats
-    :param data: data
-    :type data: dict | list[ list | dict]
+    convert an item from one format to another
+    :param data: data item
+    :type data: str | dict | list
     :param kind: target format; defaults to 'conll'
     :type kind: str, optional
     :param keys: keys to form a span tuple from; defaults to None
     :type keys: list[str], optional
     :param maps: key mapping; defaults to None
     :type maps: dict[str, str], optional
-    :param refs: reference labels; defaults to None
-    :type refs: list[str], optional
-    :return: data in specified format
-    :rtype: dict | list
+    :param text: reference text; defaults to None
+    :type text: str, optional
+    :param tokens: reference tokens; defaults to None
+    :type tokens: list[str], optional
+    :param label: reference label; defaults to None
+    :type label: str, optional
+
+    :return: converted item
+    :rtype: str | dict | list
     """
-    temp = load_dataset(data, keys=keys, maps=maps, refs=refs)
+    if isinstance(data, str):
+        text, spans = from_mdown(data) if has_mdown(data) else data, []
+    elif isinstance(data, dict):
+        label = label or data.get((maps or {}).get("label"))
+        text, spans = from_parse(data, keys=keys, maps=maps)
+    elif isinstance(data, list):
+        text, spans = from_conll(data, text=text)
+    else:
+        raise TypeError(f"unsupported source data format: {type(data)}")
+
     if kind == "conll":
-        outs = dump_conll(temp)
+        outs = make_conll(text, spans, tokens=tokens)
     elif kind == "parse":
-        outs = dump_parse(temp, keys=keys, maps=maps)
+        outs = make_parse(text, spans, keys=keys, maps=maps, label=label, tokens=tokens)
     elif kind == "mdown":
-        outs = dump_mdown(temp)
+        outs = make_mdown(text, spans)
     else:
-        raise ValueError(f"unsupported output format: {kind}")
+        raise ValueError(f"unsupported target data format: {kind}")
 
     return outs
 
 
-def load_dataset(data: dict | list,
-                 keys: list[str] = None,
-                 maps: dict[str, str] = None,
-                 refs: list[str] = None,
-                 ) -> list[tuple]:
-    """
-    load dataset into [(query, label, spans)]
-    :param data: data
-    :type data: dict | list
-    :param keys: keys to form a span tuple from; defaults to None
-    :type keys: list[str], optional
-    :param maps: key mapping; defaults to None
-    :type maps: dict[str, str], optional
-    :param refs: reference labels; defaults to None
-    :type refs: list[str], optional
-    :return: [(query, label, spans)]
-    :rtype: list[tuple]
-    """
-    if isa_conll(data):
-        outs = load_conll(data, refs=refs)
-    elif isa_parse(data):
-        outs = load_parse(data, keys=keys, maps=maps)
-    elif isa_mdown(data):
-        outs = load_mdown(data)
-    else:
-        raise TypeError("unsupported data format")
-
-    return outs
-
-
-# CoNLL format functions: ('parse')
-def isa_conll(data: list[list[tuple]]) -> bool:
-    """
-    check that data is a list of lists
-    :param data: data
-    :type data: list[list[tuple]]
-    :return: True if data is a list of lists
-    :rtype: bool
-    """
-    return isinstance(data, list) and all(isinstance(x, list) for x in data)
-
-
-def load_conll(data: list[list[tuple]],
-               refs: list[str] = None
-               ) -> list[tuple[str, str, list[tuple]]]:
-    """
-    load CoNLL dataset as list of tuples
-    :param data: data
-    :type data: list[list[tuple]]
-    :param refs: reference labels; defaults to None
-    :type refs: list[str], optional
-    :return: [(query, label, spans)]
-    :rtype: list[tuple]
-    """
-    refs = refs or [""] * len(data)
-    return [from_conll(item, label=label) for item, label in zip(data, refs, strict=True)]
-
-
-def dump_conll(data: list[tuple]) -> list[list[tuple]]:
-    """
-    dump data in [(query, label, spans)] as CoNLL [[(token, IOB-tag)]]
-    :param data: data
-    :type data: list[tuple]
-    :return: data in CoNLL format
-    :rtype: list[list[tuple]]
-    """
-    return [make_conll(*item) for item in data]
-
-
-def from_conll(data: list[tuple], label: str = None) -> tuple[str, str, list[tuple]]:
+# CoNLL format functions: ('conll')
+def from_conll(data: list[tuple], text: str = None) -> tuple[str, list[tuple]]:
     """
     convert CoNLL example [(token, IOB-tag)] to (query, label, spans)
     :param data: CoNLL example
     :type data: list
-    :param label: label; defaults to None
-    :type label: str, optional
-    :return: (query, label, spans)
-    :rtype: tuple[str, str, list[tuple]]
+    :param text: query; defaults to None
+    :type text: str, optional
+    :return: (text, spans)
+    :rtype: tuple[str, list[tuple]]
     """
-    tokens = [x for x, y in data]
-    bos, eos = tuple(list(x) for x in zip(*index(tokens)))
-    spans = [(y, bos[b], eos[e - 1], " ".join(tokens[b:e]))
+    toks = [x for x, y in data]
+    text = str(text or " ".join(toks))
+
+    bos, eos = tuple(list(x) for x in zip(*index(toks, text)))
+
+    # value remain tokenized
+    spans = [(y, bos[b], eos[e - 1], " ".join(toks[b:e]))
              for y, b, e in chunk([y for x, y in data])]
-    return " ".join(tokens), (label or ""), spans
+
+    return text, spans
 
 
-def make_conll(query: str, label: str = None, spans: list[tuple] = None) -> list:
+def make_conll(text: str,
+               spans: list[tuple] = None,
+               tokens: list[str] = None
+               ) -> list:
     """
     make CoNLL block [(token, IOB-tag)] from (query, label, spans)
-    :param query: query
-    :type query: str
-    :param label: label; defaults to None
-    :type label: str, optional
+    :param text: query
+    :type text: str
     :param spans: spans; defaults to None
     :type spans: list[tuple]
+    :param tokens: reference tokens; defaults to None
+    :type tokens: list[str], optional
     :return: CoNLL format data
     :rtype: list
     """
-    _ = label  # not supported by CoNLL
+    tokens = tokens or text.strip().split()
 
-    tokens = query.strip().split()
-
-    bos, eos = tuple(list(x) for x in zip(*index(tokens)))
+    bos, eos = tuple(list(x) for x in zip(*index(tokens, text)))
 
     chunks = [(y, bos.index(b), eos.index(e) + 1) for y, b, e, _ in (spans or [])
               if (b in bos and e in eos and e > b)]
@@ -172,87 +119,39 @@ def make_conll(query: str, label: str = None, spans: list[tuple] = None) -> list
 
 
 # JSON/JSONL format functions: ('parse')
-def isa_parse(data: list[dict]) -> bool:
-    """
-    check that data is a list of dicts
-    :param data: data
-    :type data: list
-    :return: True if data is a list of dicts
-    :rtype: bool
-    """
-    return isinstance(data, list) and all(isinstance(x, dict) for x in data)
-
-
-def load_parse(data: list[dict],
-               keys: list[str] = None,
-               maps: dict[str, str] = None
-               ) -> list[tuple]:
-    """
-    load data in [{'query': str, 'label': str, 'spans': list[dict]}] to [(query, label, spans)]
-    :param data: data as parse format
-    :type data: list[dict]
-    :param keys: keys to form a span tuple from; defaults to None
-    :type keys: list[str], optional
-    :param maps: key mapping; defaults to None
-    :type maps: dict[str, str], optional
-    :return: [(query, label, spans)]
-    :rtype: list[tuple]
-    """
-    return [from_parse(item, keys=keys, maps=maps) for item in data]
-
-
-def dump_parse(data: list[tuple],
-               keys: list[str] = None,
-               maps: dict[str, str] = None
-               ) -> list[dict]:
-    """
-    dump data in [(query, label, spans)] as [{'query': str, 'label': str, 'spans': list[dict]}]
-    :param data: data
-    :type data: list[tuple]
-    :param keys: keys to form a span tuple from; defaults to None
-    :type keys: list[str], optional
-    :param maps: key mapping; defaults to None
-    :type maps: dict[str, str], optional
-    :return: data in parse format
-    :rtype: list[dict]
-    """
-    return [make_parse(*item, keys=keys, maps=maps) for item in data]
-
-
 def from_parse(data: dict,
                keys: list[str] = None,
                maps: dict[str, str] = None
-               ) -> tuple[str, str, list[tuple]]:
+               ) -> tuple[str, list[tuple]]:
     """
-    convert a "parse" {'query': str, 'label': str, 'spans': list[dict]} to (query, label, spans)
+    convert a "parse" {'text': str, 'spans': list[dict]} to (text, spans)
     :param data: data as parse
     :type data: dict
     :param keys: keys to form span tuple from; defaults to None
     :type keys: list[str], optional
     :param maps: key mapping; defaults to None
     :type maps: dict[str, str], optional
-    :return: (query, label, spans)
-    :rtype: tuple[str, str, list[tuple]]
+    :return: (text, spans)
+    :rtype: tuple[str, list[tuple]]
     """
     parse = {(maps or {}).get(k, k): v for k, v in data.items()}
-    query = str(parse.get("query"))
-    label = str(parse.get("label", ""))
-    spans = [dict2tuple(x, keys=keys, maps=maps) for x in parse.get("spans", [])]
-    return query, label, spans
+    text = str(parse.get("text"))
+    spans = [tuple(span.get((maps or {}).get(k, k)) for k in (keys or list(span.keys())))
+             for span in parse.get("spans", [])]
+    return text, spans
 
 
-def make_parse(query: str, label: str = None, spans: list[tuple] = None,
+def make_parse(text: str, spans: list[tuple] = None,
                *,
                keys: list[str] = None,
                maps: dict[str, str] = None,
-               clean: bool = False
+               clean: bool = False,
+               **kwargs
                ) -> dict:
     """
-    make a parse  {'query': str, 'label': str, 'spans': list[dict]} from (query, label, spans)
-    :param query: query
-    :type query: str
-    :param label: label; defaults to None
-    :type label: str, optional
+    make a parse  {'text': str, 'spans': list[dict]} from (text, spans)
+    :param text: text
+    :type text: str
     :param spans: spans; defaults to None
     :type spans: list[tuple]
     :param keys: keys to form tuple from; defaults to None
@@ -264,49 +163,19 @@ def make_parse(query: str, label: str = None, spans: list[tuple] = None,
     :return: parse
     :rtype: dict
     """
+    keys = keys or ["label", "bos", "eos", "value"]
+    dicts = [{(maps or {}).get(k, k): v for k, v in dict(zip(keys, span, strict=True)).items()}
+             for span in spans]
     parse = {
-        (maps or {}).get("query", "query"): query,
-        (maps or {}).get("label", "label"): label,
-        (maps or {}).get("spans", "spans"): [tuple2dict(span, keys, maps=maps) for span in spans]
+        (maps or {}).get("text", "text"): text,
+        (maps or {}).get("spans", "spans"): dicts
     }
+    parse.update({k: v for k, v in kwargs.items() if v})
     parse = {k: v for k, v in parse.items() if v} if clean else parse
     return parse
 
 
-def tuple2dict(data: tuple, keys: list[str] = None, maps: dict[str, str] = None) -> dict:
-    """
-    convert tuple to a dict w.r.t. keys
-    :param data: span
-    :type data: tuple
-    :param keys: keys to form tuple with; defaults to None
-    :type keys: list[str], optional
-    :param maps: key mapping; defaults to None
-    :type maps: dict[str, str], optional
-    :return: span as mapping
-    :rtype: dict
-    """
-    keys = keys or ["label", "bos", "eos", "value"]
-    return {(maps or {}).get(k, k): v for k, v in dict(zip(keys, data, strict=True)).items()}
-
-
-def dict2tuple(data: dict, keys: list[str] = None, maps: dict[str, str] = None) -> tuple:
-    """
-    convert dict to a tuple w.r.t. keys
-    :param data: span
-    :type data: dict
-    :param keys: keys to form tuple from; defaults to None
-    :type keys: list[str], optional
-    :param maps: key mapping; defaults to None
-    :type maps: dict[str, str], optional
-    :return: match
-    :rtype: tuple
-    """
-    data = {(maps or {}).get(k, k): v for k, v in data.items()}
-    keys = keys or list(data.keys())
-    return tuple(data.get(k) for k in keys)
-
-
-# YAML/Markdown format functions: ('mdown')
+# Markdown format functions: ('mdown')
 def has_mdown(text: str, regex: str = None) -> bool:
     """
     check if text has Markdown annotation
@@ -321,58 +190,17 @@ def has_mdown(text: str, regex: str = None) -> bool:
     return bool(re.search(regex, text))
 
 
-def isa_mdown(data: dict) -> bool:
+def from_mdown(data: str) -> tuple[str, list[tuple]]:
     """
-    check if data is in YAML/Markdown format (dict[str, list[str]])
-    :param data: data
-    :type data: dict
-    :return: True if data is in YAML/Markdown format
-    :rtype: bool
-    """
-    return (isinstance(data, dict) and
-            all(isinstance(v, list)
-                and all(isinstance(x, str) for x in v)
-                and any(has_mdown(x) for x in v)
-                for _, v in data.items()))
-
-
-def load_mdown(data: dict[str, list[str]]) -> list[tuple]:
-    """
-    load data from {label: [item]} in Markdown to [(query, label, spans)]
-    :param data: data
-    :type data: dict[str, list[str]]
-    :return: [(query, label, spans)]
-    :rtype: list[tuple]
-    """
-    return [from_mdown(x, label=k) for k, v in data.items() for x in v]
-
-
-def dump_mdown(data: list[tuple]) -> dict[str, list[str]]:
-    """
-    dump [(query, label, spans)] as Markdown {label: [item]}
-    :param data: data
-    :type data: list[tuple]
-    :return: data as Markdown {label: [item]}
-    :rtype: dict[str, list[str]]
-    """
-    outs = defaultdict(list)
-    _ = [outs[item[1]].append(make_mdown(*item)) for item in data]
-    return dict(outs)
-
-
-def from_mdown(data: str, label: str = None) -> tuple[str, str, list[tuple]]:
-    """
-    convert Markdown annotated text to (query, label, spans)
+    convert Markdown annotated text to (text, spans)
     :param data: data as text
     :type data: str
-    :param label: label; defaults to None
-    :type label: str, optional
-    :return: (query, label, spans)
-    :rtype: tuple[str, str, list[tuple]]
+    :return: (text, spans)
+    :rtype: tuple[str, list[tuple]]
     """
     # [text](label(:value)?)
     regex = re.compile(r'\[(?P<text>[^]]+)]\((?P<label>[^:)]*?)(?::(?P<value>[^)]+))?\)')
-    query = re.sub(regex, lambda m: m.groupdict()['text'], data)
+    text = re.sub(regex, lambda m: m.groupdict()['text'], data)
     spans = []
     start = 0
 
@@ -387,35 +215,32 @@ def from_mdown(data: str, label: str = None) -> tuple[str, str, list[tuple]]:
 
         spans.append((lbl, bos, eos, val))
 
-    return query, (label or ""), spans
+    return text, spans
 
 
-def make_mdown(query: str, label: str, spans: list[tuple]) -> str:
+def make_mdown(text: str, spans: list[tuple]) -> str:
     """
-    annotate query with spans in-line
-    :param query: text to annotate
-    :type query: str
-    :param label: query label
-    :type label: str
-    :param spans: matches as dicts
+    annotate text with spans in-line
+    :param text: text to annotate
+    :type text: str
+    :param spans: spans as (label, bos, eos, value); bos & eos are character-level
     :type spans: list[tuple]
-    :return: annotated query
+    :return: annotated text (parse)
     :rtype: str
     """
-    _ = label  # not used
-    # character-level matches: consolidated
+    # character-level spans: consolidated
     spans = sorted(spans, key=lambda x: (x[1], -x[2]))
-    text = ""
-    mark = 0
+    parse = ""
+    start = 0
     for lbl, bos, eos, val in spans:
-        if mark < bos:
-            text += query[mark:bos]
+        if start < bos:
+            parse += text[start:bos]
 
-        syns = None if query[bos:eos] == val else val
-        text += (f"[{query[bos:eos]}]({lbl}:{syns})" if syns else f"[{query[bos:eos]}]({lbl})")
-        mark = eos
+        value = None if text[bos:eos] == val else val
+        parse += (f"[{text[bos:eos]}]({lbl}:{value})" if value else f"[{text[bos:eos]}]({lbl})")
+        start = eos
 
-    if mark != len(query):
-        text += query[mark:]
+    if start != len(text):
+        parse += text[start:]
 
-    return text
+    return parse

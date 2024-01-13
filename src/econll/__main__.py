@@ -9,6 +9,8 @@ __version__ = "0.2.0"
 import argparse
 import json
 
+from itertools import groupby
+
 import yaml
 
 from econll.reader import load, dump, get_tags, get_refs
@@ -78,6 +80,32 @@ def dump_jsonl(data: list[dict], path: str) -> None:
             file.write(json.dumps(item) + "\n")
 
 
+def conv(data: dict | list, kind: str = "conll") -> dict | list:
+    """
+    convert dataset from one format to another
+    :param data: dataset
+    :type data: dict | list
+    :param kind: target format; defaults to 'conll'
+    :type kind: str, optional
+    :return: dataset in target format
+    :rtype: dict | list
+    """
+    labels = None
+    if isinstance(data, dict):
+        labels = [k for k, v in data.items() for _ in v]
+        data = [x for k, v in data.items() for x in v]
+
+    labels = labels or [None] * len(data)
+    sample = [convert(item, kind=kind, label=label)
+              for item, label in zip(data, labels, strict=True)]
+
+    if kind == "mdown":
+        sample = groupby(sorted(list(zip(labels, sample, strict=True))), lambda x: x[0])
+        sample = {k: [x[1] for x in v] for k, v in sample}
+
+    return sample
+
+
 def create_argument_parser() -> argparse.ArgumentParser:
     """
     create CLI argument parser
@@ -88,7 +116,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
 
     # add command
     parser.add_argument("command", nargs="?",
-                        choices=["eval", "convert"],
+                        choices=["eval", "conv"],
                         default="eval",
                         help="task to perform")
 
@@ -189,14 +217,13 @@ def main() -> None:
         print(tokeneval(refs, hyps))
         print(chunkeval(refs, hyps, **tf_params))
 
-    elif cmd == "convert":
+    elif cmd == "conv":
         path = args.data
-        refs = read_list(args.refs) if args.refs else None
         data = (read_yaml(path) if path.endswith(".yaml") else
                 read_jsonl(path) if path.endswith(".jsonl") else
                 load(args.data, **df_params))
 
-        outs = convert(data, kind=args.form, refs=refs)
+        outs = conv(data, kind=args.form)
 
         if args.form == "mdown":
             dump_yaml(outs, args.outs)

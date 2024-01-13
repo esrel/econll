@@ -134,12 +134,12 @@ usage: PROG [-h] -d DATA [-r REFS]
             [--separator SEPARATOR] [--boundary BOUNDARY] [--docstart DOCSTART] 
             [--kind {prefix,suffix}] [--glue GLUE] [--otag OTAG]
             [-f {conll,parse,mdown}] [-o OUTS]
-            [{eval,convert}]
+            [{eval,conv}]
 
 eCoNLL: Extended CoNLL Utilities
 
 positional arguments:
-  {eval,convert}        task to perform
+  {eval,conv}        task to perform
 
 options:
   -h, --help            show this help message and exit
@@ -178,7 +178,7 @@ python -m econll eval -d DATA -r REFS
 #### Conversion
 
 ```commandline
-python -m econll convert -d DATA -r LABELS -f FORMAT -o PATH
+python -m econll conv -d DATA -f FORMAT -o PATH
 ```
 
 

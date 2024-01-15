@@ -24,7 +24,6 @@ def convert(data: str | dict | list,
             maps: list[str] = None,
             text: str = None,
             tokens: list[str] = None,
-            label: str = None,
             ) -> str | dict | list:
     """
     convert an item from one format to another
@@ -40,32 +39,50 @@ def convert(data: str | dict | list,
     :type text: str, optional
     :param tokens: reference tokens; defaults to None
     :type tokens: list[str], optional
-    :param label: reference label; defaults to None
-    :type label: str, optional
-
     :return: converted item
     :rtype: str | dict | list
     """
-    if isinstance(data, str):
-        text, spans = from_mdown(data) if has_mdown(data) else data, []
-    elif isinstance(data, dict):
-        label = label or data.get((maps or {}).get("label"))
-        text, spans = from_parse(data, keys=keys, maps=maps)
-    elif isinstance(data, list):
-        text, spans = from_conll(data, text=text)
-    else:
-        raise TypeError(f"unsupported source data format: {type(data)}")
+    text, spans = load_from(data, keys=keys, maps=maps, text=text)
 
     if kind == "conll":
         outs = make_conll(text, spans, tokens=tokens)
     elif kind == "parse":
-        outs = make_parse(text, spans, keys=keys, maps=maps, label=label, tokens=tokens)
+        outs = make_parse(text, spans, keys=keys, maps=maps, tokens=tokens)
     elif kind == "mdown":
         outs = make_mdown(text, spans)
     else:
         raise ValueError(f"unsupported target data format: {kind}")
 
     return outs
+
+
+def load_from(data: str | dict | list,
+              keys: list[str] = None,
+              maps: list[str] = None,
+              text: str = None
+              ) -> tuple[str, list[tuple]]:
+    """
+    load an item from a format
+    :param data: data item
+    :type data: str | dict | list
+    :param keys: keys to form a span tuple from; defaults to None
+    :type keys: list[str], optional
+    :param maps: key mapping; defaults to None
+    :type maps: dict[str, str], optional
+    :param text: reference text; defaults to None
+    :type text: str, optional
+    :return: (text, label, spans)
+    """
+    if isinstance(data, str):
+        text, spans = from_mdown(data) if has_mdown(data) else (data, [])
+    elif isinstance(data, dict):
+        text, spans = from_parse(data, keys=keys, maps=maps)
+    elif isinstance(data, list):
+        text, spans = from_conll(data, text=text)
+    else:
+        raise TypeError(f"unsupported source data format: {type(data)}")
+
+    return text, spans
 
 
 # CoNLL format functions: ('conll')
@@ -84,7 +101,7 @@ def from_conll(data: list[tuple], text: str = None) -> tuple[str, list[tuple]]:
 
     bos, eos = tuple(list(x) for x in zip(*index(toks, text)))
 
-    # value remain tokenized
+    # value remains tokenized
     spans = [(y, bos[b], eos[e - 1], " ".join(toks[b:e]))
              for y, b, e in chunk([y for x, y in data])]
 

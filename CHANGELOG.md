@@ -2,6 +2,11 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.2.5
+
+- refactored `convert`
+- removed `labels` from `refs`
+
 ## 0.2.4
 - added CLI interface to `convert`
 - added reference label input for `convert` (reusing `refs`)

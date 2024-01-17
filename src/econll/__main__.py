@@ -3,79 +3,47 @@
 __author__ = "Evgeny A. Stepanov"
 __email__ = "stepanov.evgeny.a@gmail.com"
 __status__ = "dev"
-__version__ = "0.2.0"
+__version__ = "0.2.5"
 
 
 import argparse
 import json
-
-import yaml
 
 from econll.reader import load, dump, get_tags, get_refs
 from econll.scorer import tokeneval, chunkeval
 from econll.converter import convert
 
 
-# file reading function from `ematcher`
-def read_list(path: str) -> list[str]:
+def read(path: str) -> list:
     """
-    read listing/gazetteer file
+    read data file (md, jsonl)
     :param path: path to file
     :type path: str
-    :return: patterns
-    :rtype: list[str]
+    :return: data sample
+    :rtype: list[str | dict | list]
     """
     with open(path, "r", encoding="utf-8") as file:
-        return [line.strip() for line in file.readlines()]
+        data = [line.strip() for line in file.readlines()]
+
+    if path.endswith(".jsonl"):
+        data = [json.loads(item) for item in data]
+
+    return data
 
 
-def read_yaml(path: str) -> dict:
+def save(data: list, path: str) -> None:
     """
-    read YAML file
-    :param path: path to file
-    :type path: str
-    :return: data
-    :rtype: dict
-    """
-    with open(path, "r", encoding="utf-8") as file:
-        return yaml.safe_load(file)
-
-
-def dump_yaml(data: dict, path: str) -> None:
-    """
-    dump YAML file
-    :param data: data to dump
-    :type data: dict
+    save data to file (md, jsonl)
+    :param data: data
+    :type data: list
     :param path: path to file
     :type path: str
     """
+    if all(isinstance(item, dict) for item in data):
+        data = [json.dumps(item) for item in data]
+
     with open(path, "w", encoding="utf-8") as file:
-        return yaml.safe_dump(data, file, sort_keys=False)
-
-
-def read_jsonl(path: str) -> list[dict]:
-    """
-    read JSONL file
-    :param path: path to file
-    :type path: str
-    :return: patterns
-    :rtype: list[str]
-    """
-    with open(path, "r", encoding="utf-8") as file:
-        return [json.loads(line.strip()) for line in file.readlines()]
-
-
-def dump_jsonl(data: list[dict], path: str) -> None:
-    """
-    dump list to file
-    :param data: data to dump
-    :type data: list[str]
-    :param path: path to file
-    :type path: str
-    """
-    with open(path, "w", encoding="utf-8") as file:
-        for item in data:
-            file.write(json.dumps(item) + "\n")
+        file.write("\n".join(data) + "\n")
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -88,7 +56,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
 
     # add command
     parser.add_argument("command", nargs="?",
-                        choices=["eval", "convert"],
+                        choices=["eval", "conv"],
                         default="eval",
                         help="task to perform")
 
@@ -189,21 +157,11 @@ def main() -> None:
         print(tokeneval(refs, hyps))
         print(chunkeval(refs, hyps, **tf_params))
 
-    elif cmd == "convert":
+    elif cmd == "conv":
         path = args.data
-        refs = read_list(args.refs) if args.refs else None
-        data = (read_yaml(path) if path.endswith(".yaml") else
-                read_jsonl(path) if path.endswith(".jsonl") else
-                load(args.data, **df_params))
-
-        outs = convert(data, kind=args.form, refs=refs)
-
-        if args.form == "mdown":
-            dump_yaml(outs, args.outs)
-        elif args.form == "parse":
-            dump_jsonl(outs, args.outs)
-        else:
-            dump(outs, args.outs)
+        data = read(path) if path.endswith((".mdown", ".jsonl")) else load(path, **df_params)
+        outs = [convert(item, kind=args.form) for item in data]
+        (dump if args.form == "conll" else save)(outs, args.outs)
 
 
 if __name__ == "__main__":

@@ -17,6 +17,9 @@ from econll.indexer import index
 from econll.xcoder import xcode
 
 
+# pylint: disable=too-many-arguments
+
+
 def convert(data: str | dict | list,
             kind: str = "conll",
             *,

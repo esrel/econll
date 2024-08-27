@@ -12,6 +12,7 @@ import json
 from econll.reader import load, dump, get_tags, get_refs
 from econll.scorer import tokeneval, chunkeval
 from econll.converter import convert
+from econll.stats import stats
 
 
 def read(path: str) -> list:
@@ -56,7 +57,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
 
     # add command
     parser.add_argument("command", nargs="?",
-                        choices=["eval", "conv"],
+                        choices=["eval", "conv", "stat"],
                         default="eval",
                         help="task to perform")
 
@@ -162,6 +163,10 @@ def main() -> None:
         data = read(path) if path.endswith((".mdown", ".jsonl")) else load(path, **df_params)
         outs = [convert(item, kind=args.form) for item in data]
         (dump if args.form == "conll" else save)(outs, args.outs)
+
+    elif cmd == "stat":
+        data = load(args.data, **df_params)
+        stats(data)
 
 
 if __name__ == "__main__":

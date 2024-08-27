@@ -2,8 +2,12 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
-## 0.2.5
+## 0.3.0
+- added `stats` for computing data statistics
+- added `stat` command to CLI
+- added linter comments to `converter` and `tabler`
 
+## 0.2.5
 - refactored `convert`
 - removed `labels` from `refs`
 

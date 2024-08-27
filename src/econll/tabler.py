@@ -21,6 +21,9 @@ __status__ = "dev"
 __version__ = "0.1.3"
 
 
+# pylint: disable=too-many-arguments
+
+
 def report(class_scores: dict[str, tuple[float, float, float]],
            class_counts: dict[str, tuple[int, int, int]],
            total_scores: dict[str, tuple[float, float, float]] = None,

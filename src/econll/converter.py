@@ -19,6 +19,9 @@ from econll.xcoder import xcode
 
 # pylint: disable=too-many-arguments
 
+# [text](label(:value)?); the text has no bracket, except as a bracket token: [[](PUNCT), []](PUNCT)
+MDOWN = r'\[(?P<text>\[|]|[^\[\]]+)]\((?P<label>[^:)]*?)(?::(?P<value>[^)]+))?\)'
+
 
 def convert(data: str | dict | list,
             kind: str = "conll",
@@ -206,7 +209,7 @@ def has_mdown(text: str, regex: str = None) -> bool:
     :return: True if there is an annotation pattern
     :rtype: bool
     """
-    regex = regex or r'\[(?P<text>[^]]+)]\((?P<label>[^:)]*?)(?::(?P<value>[^)]+))?\)'
+    regex = regex or MDOWN
     return bool(re.search(regex, text))
 
 
@@ -218,8 +221,7 @@ def from_mdown(data: str) -> tuple[str, list[tuple]]:
     :return: (text, spans)
     :rtype: tuple[str, list[tuple]]
     """
-    # [text](label(:value)?)
-    regex = re.compile(r'\[(?P<text>[^]]+)]\((?P<label>[^:)]*?)(?::(?P<value>[^)]+))?\)')
+    regex = re.compile(MDOWN)
     text = re.sub(regex, lambda m: m.groupdict()['text'], data)
     spans = []
     start = 0

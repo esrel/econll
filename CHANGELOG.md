@@ -2,6 +2,10 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## 0.3.1
+- fixed `mdown` reading: a bracket of the text (`[ [a](x) ]`) is a word, not the start of a chunk; a chunk can be a bracket token (`[[](PUNCT)`)
+- made the `mdown` pattern a constant (`converter.MDOWN`)
+
 ## 0.3.0
 - added `stats` for computing data statistics
 - added `stat` command to CLI

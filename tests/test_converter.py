@@ -43,6 +43,24 @@ def test_from_make_mdown() -> None:
     assert ec.make_mdown(text, spans) == mdown
 
 
+def test_mdown_with_literal_brackets() -> None:
+    """ a bracket of the text (`[ a ]`) is a word, not the start of a chunk """
+    mdown = "[a](food) [ [wheat flour](food) , [sugar](food) ] , [salt](food)"
+
+    assert ec.convert(mdown, kind="conll") == [
+        ("a", "B-food"), ("[", "O"), ("wheat", "B-food"), ("flour", "I-food"), (",", "O"),
+        ("sugar", "B-food"), ("]", "O"), (",", "O"), ("salt", "B-food")]
+    assert ec.from_mdown(mdown)[0] == "a [ wheat flour , sugar ] , salt"
+
+
+def test_mdown_with_bracket_chunks() -> None:
+    """ a chunk can be a bracket token: `[[](PUNCT)`, `[]](PUNCT)` """
+    mdown = "[a](food) [[](PUNCT) [b](food) []](PUNCT)"
+
+    assert ec.convert(mdown, kind="conll") == [("a", "B-food"), ("[", "B-PUNCT"), ("b", "B-food"), ("]", "B-PUNCT")]
+    assert ec.make_mdown(*ec.from_mdown(mdown)) == mdown
+
+
 def test_from_make_mdown_syns() -> None:
     """ test from_mdown & make_mdown w/ synonyms """
     text = "aaa bbb ccc ddd"

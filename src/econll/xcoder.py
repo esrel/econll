@@ -8,35 +8,36 @@ functions:
     - token_chunk   -- generate label-affix pairs for a chunk
 """
 
-__author__ = "Evgeny A. Stepanov"
-__email__ = "stepanov.evgeny.a@gmail.com"
-__status__ = "dev"
-__version__ = "0.1.0"
 
+from collections.abc import Sequence
 
 from econll.schemer import alter
+from econll.typedefs import Chunk, Pair
 
 
-def xcode(chunks: list[tuple[str, int, int]],
-          length: int = None,
+def xcode(chunks: Sequence[Chunk],
+          length: int | None = None,
           scheme: str = "IOBES"
-          ) -> list[tuple[str | None, str]]:
+          ) -> list[Pair]:
     """
     convert chunks to a sequence of label-affix pairs (reverse of `chunk`)
     :param chunks: chunks
-    :type chunks: list[tuple[str, int, int]]
-    :param length: length of the sequence, defaults to None
-    :type length: int, optional
+    :param length: length of the sequence, defaults to None (end of the last chunk)
     :param scheme: target scheme, defaults to 'IOBES'
-    :type scheme: str, optional
     :return: a sequence of label-affix pairs
-    :rtype: list[tuple[str | None, str]]
+    :raises ValueError: if a chunk is out of range or chunks overlap
     """
-    length = length or max([e for _, _, e in chunks] + [0])
-    tokens = [(None, "O")] * length
+    length = max([e for _, _, e in chunks] + [0]) if length is None else length
+    tokens: list[Pair] = [(None, "O")] * length
 
     for label, bos, eos in chunks:
-        tokens = tokens[0:bos] + token_chunk(label, bos, eos) + tokens[eos:]
+        if not 0 <= bos < eos <= length:
+            raise ValueError(f"chunk {(label, bos, eos)} is not within 0 and {length}")
+
+        if any(token != (None, "O") for token in tokens[bos:eos]):
+            raise ValueError(f"chunk {(label, bos, eos)} overlaps with another chunk")
+
+        tokens[bos:eos] = token_chunk(label, bos, eos)
 
     tokens = tokens if scheme == "IOBES" else alter(tokens, scheme)
     return tokens
@@ -46,23 +47,17 @@ def affix_chunk(length: int) -> list[str]:
     """
     generate IOBES affix list for a chunk (assumes label is not None)
     :param length: chunk length (number of affixes to generate)
-    :type length: int
     :return: chunk affixes
-    :rtype: list[str]
     """
     return [] if length < 1 else ["S"] if length == 1 else (["B"] + ["I"] * (length - 2) + ["E"])
 
 
-def token_chunk(label: str, bos: int, eos: int) -> list[tuple[str | None, str]]:
+def token_chunk(label: str, bos: int, eos: int) -> list[Pair]:
     """
     convert chunk into a sequence of label-affix pairs
     :param label: chunk label
-    :type label: str
     :param bos: chunk begin token index
-    :type bos: int
     :param eos: chunk end token index
-    :type eos: int
     :return: sequence of label-affix pairs
-    :rtype: list[tuple[str | None, str]]
     """
     return list(zip([label] * (eos - bos), affix_chunk(eos - bos), strict=True))

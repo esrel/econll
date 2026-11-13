@@ -10,29 +10,32 @@ functions:
     - guess_scheme_one -- guess_scheme with support for "IOB1" and "IOE1"
 """
 
-__author__ = "Evgeny A. Stepanov"
-__email__ = "stepanov.evgeny.a@gmail.com"
-__status__ = "dev"
-__version__ = "0.1.0"
 
+from collections.abc import Sequence
+from typing import TypeVar, cast
 
-from econll.parser import parse, merge
+from econll.parser import as_pairs, merge
 from econll.parser import get_boc, get_eoc
 from econll.parser import get_coc_boc, get_coc_eoc
+from econll.typedefs import Pair
+
+Tags = TypeVar("Tags", str, Pair)
 
 
-def alter(data: list[str | tuple[str | None, str]],
+def alter(data: Sequence[Tags],
           scheme: str = "IOBES",
-          **kwargs
-          ) -> list[str | tuple[str | None, str]]:
+          kind: str = "prefix",
+          glue: str = "-",
+          otag: str = "O"
+          ) -> list[Tags]:
     """
     alter (change) tagging scheme (update affixes)
     :param data: token tags or label-affix pairs
-    :type data: list[str | tuple[str | None, str]]
     :param scheme: target scheme, defaults to 'IOBES'
-    :type scheme: str, optional
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :param otag: outside tag, defaults to 'O'
     :return: converted tags or label-affix pairs
-    :rtype: list[str | tuple[str | None, str]]
     :raises ValueError: if the scheme is unsupported
     """
     # affix: (int(boc), int(eoc), int(label is not None))
@@ -52,9 +55,9 @@ def alter(data: list[str | tuple[str | None, str]],
     if scheme not in schemes:
         raise ValueError(f"unsupported scheme: {scheme}")
 
-    morphs = {codes: schemes.get(scheme, {}).get(affix, affix) for affix, codes in mapping.items()}
+    morphs = {codes: schemes[scheme].get(affix, affix) for affix, codes in mapping.items()}
 
-    tokens = parse(data, **kwargs) if all(isinstance(token, str) for token in data) else data
+    tokens = as_pairs(data, kind=kind, glue=glue, otag=otag)
 
     tokens = [(label, morphs.get((boc, eoc, int(label is not None)), affix))
               for (label, affix), boc, eoc
@@ -73,43 +76,59 @@ def alter(data: list[str | tuple[str | None, str]],
                for (label, affix), eoc in zip(tokens, get_coc_eoc(tokens), strict=True)]
               if coding == "IOE1" else tokens)
 
-    return merge(tokens, **kwargs) if all(isinstance(token, str) for token in data) else tokens
+    if all(isinstance(token, str) for token in data):
+        return cast(list[Tags], merge(tokens, kind=kind, glue=glue, otag=otag))
+    return cast(list[Tags], tokens)
 
 
-def guess(data: list, **kwargs) -> str:
+def guess(data: Sequence[str] | Sequence[Pair] | Sequence[Sequence[str]] | Sequence[Sequence[Pair]],
+          kind: str = "prefix",
+          glue: str = "-",
+          otag: str = "O"
+          ) -> str | None:
     """
     guess data scheme
-    :param data: data to guess scheme for
-    :type data: list
+    :param data: data to guess scheme for:
+        a sequence of tags or label-affix pairs, or a list of those
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :param otag: outside tag, defaults to 'O'
     :return: guessed chunk coding scheme
-    :rtype: str
     """
     if all(isinstance(item, list) for item in data):
-        schemes = {guess_scheme(item, **kwargs) for item in data}
-        return None if not schemes else str(max(schemes, key=len))
-    return guess_scheme(data, **kwargs)
+        schemes = {guess_scheme(cast(Sequence[str], item), kind=kind, glue=glue, otag=otag)
+                   for item in data}
+        return max((x for x in schemes if x is not None), key=len) if schemes else None
+    return guess_scheme(cast(Sequence[str], data), kind=kind, glue=glue, otag=otag)
 
 
-def guess_scheme(tokens: list[str | tuple[str | None, str]], **kwargs) -> str | None:
+def guess_scheme(tokens: Sequence[str] | Sequence[Pair],
+                 kind: str = "prefix",
+                 glue: str = "-",
+                 otag: str = "O"
+                 ) -> str | None:
     """
     guess data chunk coding scheme (IO, IOB, IOE, IOBE, IOBES):
     returns the minimal scheme that covers input affixes or 'IO'
     :param tokens: a sequence of tags or label-affix pairs
-    :type tokens: list[str | tuple[str | None, str]]
-    :param kwargs: tag format params
-    :return: chunk coding scheme
-    :rtype: str
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :param otag: outside tag, defaults to 'O'
+    :return: chunk coding scheme, or None if affixes do not fit any scheme
     """
-    token_list = parse(tokens, **kwargs) if all(isinstance(x, str) for x in tokens) else tokens
-    affix_list = [affix for _, affix in token_list]
+    pairs = as_pairs(tokens, kind=kind, glue=glue, otag=otag)
+    affixes = {affix for _, affix in pairs}
 
-    schemes = {"IO", "IOB", "IOE", "IOBE", "IOBES"}
-    schemes = {sch for sch in schemes if set(affix_list).issubset(set(sch))}
+    schemes = {sch for sch in ("IO", "IOB", "IOE", "IOBE", "IOBES") if affixes.issubset(set(sch))}
 
     return None if not schemes else str(min(schemes, key=len))
 
 
-def guess_scheme_one(tokens: list[str | tuple[str | None, str]], **kwargs) -> str | None:
+def guess_scheme_one(tokens: Sequence[str] | Sequence[Pair],
+                     kind: str = "prefix",
+                     glue: str = "-",
+                     otag: str = "O"
+                     ) -> str | None:
     """
     guess data chunk coding scheme (IO, IOB, IOE, IOBE, IOBES)
 
@@ -117,19 +136,19 @@ def guess_scheme_one(tokens: list[str | tuple[str | None, str]], **kwargs) -> st
     which can only be observed if input has 2 adjacent chunks with the same label
 
     :param tokens: a sequence of tags or label-affix pairs
-    :type tokens: list[str | tuple[str | None, str]]
-    :param kwargs: tag format params
-    :return: chunk coding scheme
-    :rtype: str
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :param otag: outside tag, defaults to 'O'
+    :return: chunk coding scheme, or None if affixes do not fit any scheme
     """
-    token_list = parse(tokens, **kwargs) if all(isinstance(x, str) for x in tokens) else tokens
-    affix_list = [affix for _, affix in token_list]
+    pairs = as_pairs(tokens, kind=kind, glue=glue, otag=otag)
+    affixes = [affix for _, affix in pairs]
 
-    scheme = guess_scheme(token_list, **kwargs)
+    scheme = guess_scheme(pairs)
 
     if scheme in ["IOB", "IOE"]:
-        boc_set = {x for x, b in zip(affix_list, get_boc(token_list), strict=True) if b}
-        eoc_set = {x for x, e in zip(affix_list, get_eoc(token_list), strict=True) if e}
+        boc_set = {x for x, b in zip(affixes, get_boc(pairs), strict=True) if b}
+        eoc_set = {x for x, e in zip(affixes, get_eoc(pairs), strict=True) if e}
 
         scheme = "IOB1" if boc_set == set("IB") else scheme
         scheme = "IOE1" if eoc_set == set("IE") else scheme
@@ -137,19 +156,22 @@ def guess_scheme_one(tokens: list[str | tuple[str | None, str]], **kwargs) -> st
     return scheme
 
 
-def check_scheme(tokens: list[str | tuple[str | None, str]],
+def check_scheme(tokens: Sequence[str] | Sequence[Pair],
                  scheme: str = "IOBES",
-                 **kwargs) -> None:
+                 kind: str = "prefix",
+                 glue: str = "-",
+                 otag: str = "O"
+                 ) -> None:
     """
     check that affixes correspond to the scheme
     :param tokens: a sequence of tags or label-affix pairs
-    :type tokens: list[str | tuple[str | None, str]]
     :param scheme: chunk coding scheme, defaults to 'IOBES'
-    :type scheme: str, optional
-    :param kwargs: tag format params
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :param otag: outside tag, defaults to 'O'
+    :raises ValueError: if there are affixes not in the scheme
     """
-    token_list = parse(tokens, **kwargs) if all(isinstance(x, str) for x in tokens) else tokens
-    affix_list = [affix for _, affix in token_list]
+    pairs = as_pairs(tokens, kind=kind, glue=glue, otag=otag)
 
-    if errors := {affix for affix in affix_list if affix not in scheme}:
+    if errors := {affix for _, affix in pairs if affix not in scheme}:
         raise ValueError(f"unsupported scheme affix(es): {errors}")

@@ -2,7 +2,7 @@
 
 import pytest
 
-from econll.xcoder import token_chunk, affix_chunk
+from econll.xcoder import xcode, token_chunk, affix_chunk
 
 
 # `xcode` is not tested
@@ -42,3 +42,18 @@ def test_token_chunk(chunk: tuple[str, int, int],
     :type tokens: list[tuple[str | None, str]]
     """
     assert token_chunk(*chunk) == tokens
+
+
+def test_xcode_errors() -> None:
+    """ test xcode: overlapping & out-of-range chunks; zero length """
+    with pytest.raises(ValueError):
+        xcode([("X", 0, 3), ("Y", 1, 2)])  # overlap
+
+    with pytest.raises(ValueError):
+        xcode([("X", 2, 5)], length=3)  # out of range
+
+    with pytest.raises(ValueError):
+        xcode([("X", 2, 2)])  # empty chunk
+
+    assert xcode([], length=0) == []
+    assert xcode([("X", 0, 1)], length=2) == [("X", "S"), (None, "O")]

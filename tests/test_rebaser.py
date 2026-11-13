@@ -1,6 +1,8 @@
 """ eCoNLL rebaser tests """
 
 
+import pytest
+
 from econll.rebaser import rebase, rebase_tokens, rebase_chunks
 
 
@@ -18,7 +20,8 @@ def test_rebase_tokens() -> None:
                                             (None, "O"), ("z", "B"),
                                             ("z", "E"), (None, "O")]
 
-    assert rebase_tokens(tokens, aligns) == result
+    with pytest.warns(UserWarning, match="removed chunks"):
+        assert rebase_tokens(tokens, aligns) == result
 
 
 def test_rebase_chunks() -> None:
@@ -30,7 +33,8 @@ def test_rebase_chunks() -> None:
     chunks: list[tuple[str, int, int]] = [("x", 0, 2), ("y", 2, 3), ("z", 4, 5)]
     result: list[tuple[str, int, int]] = [("x", 0, 2), ("z", 3, 5)]
 
-    assert rebase_chunks(chunks, aligns) == result
+    with pytest.warns(UserWarning, match="removed chunks"):
+        assert rebase_chunks(chunks, aligns) == result
 
 
 def test_rebase() -> None:
@@ -41,4 +45,28 @@ def test_rebase() -> None:
     tag: list[str] = ["B-x", "I-x", "B-y", "O", "B-z", "O"]
     out: list[str] = ["B-x", "I-x", "O", "B-z", "I-z", "O"]
 
-    assert out == rebase(src, tgt, tag, txt, scheme="IOB")
+    with pytest.warns(UserWarning, match="removed chunks"):
+        assert out == rebase(src, tgt, tag, txt, scheme="IOB")
+
+
+def test_rebase_tag_format() -> None:
+    """ test rebase: tag format params (kind, glue) are respected """
+    source, target = ["a", "b", "c"], ["a", "bc"]
+
+    assert rebase(source, target, ["O", "B-X"], tokens="abc") == ["O", "B-X", "I-X"]
+    assert rebase(source, target, ["O", "X-B"], tokens="abc", kind="suffix") == ["O", "X-B", "X-I"]
+    assert rebase(source, target, ["O", "B_X"], tokens="abc", glue="_") == ["O", "B_X", "I_X"]
+
+
+def test_rebase_errors_and_schemes() -> None:
+    """ test rebase: input validation (ValueError) & IOB1 preservation """
+    with pytest.raises(ValueError):
+        rebase(["a", "b"], ["ab"], ["B-X", "I-X"], tokens="ab")  # values do not match target
+
+    with pytest.raises(ValueError):
+        rebase_tokens(["B-X"], [([0], [0, 1])])  # tokens do not match alignment
+
+    # IOB1 input stays IOB1: `B` only between adjacent chunks with the same label
+    source, target = ["a", "b", "c", "d"], ["ab", "c", "d"]
+    values = ["I-X", "I-X", "B-X"]
+    assert rebase(source, target, values, tokens="abcd") == ["I-X", "I-X", "I-X", "B-X"]

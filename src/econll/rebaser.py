@@ -8,86 +8,99 @@ functions:
     - rebase_chunks -- rebase chunks w.r.t. alignment
 """
 
-__author__ = "Evgeny A. Stepanov"
-__email__ = "stepanov.evgeny.a@gmail.com"
-__status__ = "dev"
-__version__ = "0.1.0"
 
+import warnings
+from collections.abc import Sequence
+from typing import TypeVar, cast
 
 from econll.parser import merge, chunk
 from econll.xcoder import xcode
 from econll.aligner import align, xbase
-from econll.schemer import alter, guess
+from econll.schemer import alter, guess_scheme_one
+from econll.typedefs import Alignment, Chunk, Pair
+
+Tags = TypeVar("Tags", str, Pair)
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments
 
 
-def rebase(source: list[str],
-           target: list[str],
-           values: list[str | tuple[str | None, str]],
-           tokens: str | list[str] = None,
-           scheme: str = None,
-           **kwargs
-           ) -> list[str | tuple[str | None, str]]:
+def rebase(source: Sequence[str],
+           target: Sequence[str],
+           values: Sequence[Tags],
+           tokens: str | Sequence[str] | None = None,
+           scheme: str | None = None,
+           kind: str = "prefix",
+           glue: str = "-",
+           otag: str = "O"
+           ) -> list[Tags]:
     """
     rebase values (of the target) to source tokens
     :param source: source token sequence (new base)
-    :type source: list[str]
     :param target: target token sequence (old base)
-    :type target: list[str]
-    :param values: value sequence to rebase from target to source
-    :type values: list[str | tuple[str | None, str]]]
+    :param values: value sequence (tags or label-affix pairs) to rebase from target to source
     :param tokens: tokens for boundaries, defaults to None
-    :type tokens: str | list[str], optional
-    :param scheme: target scheme, defaults to None
-    :type scheme: str, optional
-    :return: rebased value sequence
-    :rtype: list[str | tuple[str | None, str]]]
+    :param scheme: target scheme, defaults to None (guessed from `values`, incl. IOB1 & IOE1)
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :param otag: outside tag, defaults to 'O'
+    :return: rebased value sequence (same kind as `values`)
+    :raises ValueError: if `values` do not match `target` or sequences cannot be aligned
+    :warns UserWarning: if there are chunks that do not align to source token boundaries
     """
-    assert len(target) == len(values)
+    if len(target) != len(values):
+        raise ValueError(f"values ({len(values)}) do not match target tokens ({len(target)})")
 
-    if source == target:
-        return values
+    if list(source) == list(target):
+        return list(values)
 
-    result = rebase_tokens(values, align(source, target, tokens))
-    result = alter(result, scheme=(scheme or guess(values, **kwargs)))
-    return merge(result, **kwargs) if all(isinstance(x, str) for x in values) else result
+    fmt = {"kind": kind, "glue": glue, "otag": otag}
+
+    pairs = rebase_tokens(values, align(source, target, tokens), **fmt)
+    pairs = alter(pairs, scheme=(scheme or guess_scheme_one(values, **fmt) or "IOBES"))
+
+    if all(isinstance(x, str) for x in values):
+        return cast(list[Tags], merge(pairs, **fmt))
+    return cast(list[Tags], pairs)
 
 
-def rebase_chunks(chunks: list[tuple[str, int, int]],
-                  alignment: list[tuple[list[int], list[int]]]
-                  ) -> list[tuple[str, int, int]]:
+def rebase_chunks(chunks: Sequence[Chunk], alignment: Alignment) -> list[Chunk]:
     """
-    rebase values (of the target) to source tokens
+    rebase chunks (of the target) to source tokens
     :param chunks: chunks to rebase from target to source
-    :type chunks: list[str | tuple[str | None, str]]
     :param alignment: token-level alignment
-    :type alignment: list[tuple[list[int], list[int]]]
-    :return: rebased chunks
-    :rtype: list[tuple[str, int, int]]
+    :return: rebased chunks; chunks that do not align to source token boundaries are removed
     """
     bos, eos = xbase(alignment)
 
-    # errors = [(y, b, e) for y, b, e in chunks if not (b in bos and e in eos)]
+    removed = [(y, b, e) for y, b, e in chunks if not (b in bos and e in eos)]
 
-    return [(y, bos.get(b), eos.get(e)) for y, b, e in chunks if (b in bos and e in eos)]
+    if removed:
+        warnings.warn(f"removed chunks (not on source token boundaries): {removed}", stacklevel=2)
+
+    return [(y, bos[b], eos[e]) for y, b, e in chunks if (b in bos and e in eos)]
 
 
-def rebase_tokens(tokens: list[tuple[str | None, str]],
-                  alignment: list[tuple[list[int], list[int]]]
-                  ) -> list[tuple[str | None, str]]:
+def rebase_tokens(tokens: Sequence[str] | Sequence[Pair],
+                  alignment: Alignment,
+                  kind: str = "prefix",
+                  glue: str = "-",
+                  otag: str = "O"
+                  ) -> list[Pair]:
     """
-    rebase values (of the target) to source tokens
+    rebase tags or label-affix pairs (of the target) to source tokens
     :param tokens: tags or label-affix pairs to rebase
-    :type tokens: list[str | tuple[str | None, str]]
     :param alignment: token-level alignment
-    :type alignment: list[tuple[list[int], list[int]]]
-    :return: rebased chunks
-    :rtype: list[tuple[str, int, int]]
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :param otag: outside tag, defaults to 'O'
+    :return: rebased label-affix pairs (IOBES)
+    :raises ValueError: if `tokens` do not match the alignment
     """
-    assert len(tokens) == sum(len(tgt) for _, tgt in alignment)
+    if len(tokens) != sum(len(tgt) for _, tgt in alignment):
+        raise ValueError("tokens do not match the alignment")
 
     length = sum(len(src) for src, _ in alignment)
-    chunks = chunk(tokens)
+    chunks = chunk(tokens, kind=kind, glue=glue, otag=otag)
     chunks = rebase_chunks(chunks, alignment) if chunks else []
-    tokens = xcode(chunks, length)
 
-    return tokens
+    return xcode(chunks, length)

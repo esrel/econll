@@ -403,3 +403,13 @@ def test_parse_merge() -> None:
     # BILOU tag sequence with affix errors (chunks are fine)
     tags = ["O", "I-X", "L-X", "O", "U-Y"]
     assert tags == merge(parse(tags))
+
+
+def test_parse_tag_glue_in_label() -> None:
+    """ test parse_tag: labels containing the glue; malformed tags """
+    assert parse_tag("B-New-York") == ("New-York", "B")
+    assert parse_tag("New-York-B", kind="suffix") == ("New-York", "B")
+    assert parse_tag("O") == (None, "O")
+
+    with pytest.raises(ValueError):
+        parse_tag("PER")

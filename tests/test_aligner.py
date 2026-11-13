@@ -89,3 +89,12 @@ def test_xbase() -> None:
     eos: dict[int, int] = {2: 2, 4: 3, 5: 5, 6: 6}
 
     assert xbase(alignment) == (bos, eos)
+
+
+def test_align_errors() -> None:
+    """ test align: sequences over different text raise ValueError (not assert) """
+    with pytest.raises(ValueError):
+        align(["a", "b"], ["a", "c"], tokens="ab")
+
+    # string input: coverage is checked w.r.t. tokens, not characters
+    assert align("aa bb", ["aa", "bb"]) == [([0], [0]), ([1], [1])]

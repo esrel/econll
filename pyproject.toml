@@ -1,0 +1,52 @@
+[build-system]
+requires = [ "setuptools >= 75.8.0" ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "econll"
+version = "0.4.0"
+authors = [
+    { name = "Evgeny A. Stepanov", email = "stepanov.evgeny.a@gmail.com" },
+]
+description = "Extended CoNLL Utilities for Shallow Parsing"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    'Development Status :: 4 - Beta',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Typing :: Typed',
+    'Topic :: Scientific/Engineering :: Artificial Intelligence',
+    'Intended Audience :: Science/Research'
+]
+license = "GPL-3.0-or-later"
+license-files = [ "LICEN[CS]E*" ]
+dependencies = []
+
+[project.scripts]
+econll = "econll.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/esrel/econll"
+Issues = "https://github.com/esrel/econll/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.package-data]
+econll = [ "py.typed" ]
+
+[dependency-groups]
+dev = [ "pytest", "pytest-cov", "mypy" ]
+
+[tool.mypy]
+python_version = "3.10"
+files = [ "src" ]
+strict = true
+warn_redundant_casts = false  # casts over constrained TypeVars (str | Pair) are checked per constraint
+
+[tool.pytest.ini_options]
+testpaths = [ "tests" ]

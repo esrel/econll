@@ -98,3 +98,31 @@ def test_load_dump(data_text: list[list[str]],
     temp = load(path)
 
     assert data == temp
+
+
+def test_load_edge_cases(tmp_path) -> None:
+    """ test load: no trailing boundary, empty trailing fields, DOCSTART lines, CRLF """
+    def read(content: str, **kwargs) -> list:
+        path = tmp_path / "data.tsv"
+        path.write_bytes(content.encode("utf-8"))
+        return load(str(path), **kwargs)
+
+    # last block without a trailing boundary line is kept
+    blocks = read("a\tB-X\nb\tI-X\n\nc\tO\nd\tO")
+    assert blocks == [[("a", "B-X"), ("b", "I-X")], [("c", "O"), ("d", "O")]]
+
+    # trailing & middle empty fields are preserved
+    assert read("a\tx\t\nb\ty\t\n\n") == [[("a", "x", ""), ("b", "y", "")]]
+    assert read("a\t\tB-X\n\n") == [[("a", "", "B-X")]]
+
+    # CoNLL-2003 style DOCSTART line (with fields) and the bare one are skipped
+    conll = read("-DOCSTART- -X- -X- O\n\nEU NNP B-ORG\n\n", separator=" ")
+    assert conll == [[("EU", "NNP", "B-ORG")]]
+    assert read("-DOCSTART-\n\nEU\tB-ORG\n") == [[("EU", "B-ORG")]]
+
+    # Windows line endings
+    assert read("a\tB-X\r\nb\tO\r\n\r\nc\tO\r\n") == [[("a", "B-X"), ("b", "O")], [("c", "O")]]
+
+    # inconsistent number of fields
+    with pytest.raises(ValueError):
+        read("a\tx\tB-X\nb\tO\n\n")

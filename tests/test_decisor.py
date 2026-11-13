@@ -106,7 +106,8 @@ def test_group_spans() -> None:
     links: list[tuple[int, int]] = [(0, 4), (3, 6), (0, 7)]
 
     assert group_spans(spans) == [[0, 1, 2], [3, 4], [5, 6, 7]]
-    assert group_spans(spans + links[0:1]) == [[0, 1, 2, 3, 4, 5], [6, 7, 8]]
+    # indices refer to the input order: the link is the last one (8)
+    assert group_spans(spans + links[0:1]) == [[0, 1, 2, 3, 4, 8], [5, 6, 7]]
     assert group_spans(spans + links[1:2]) == [[0, 1, 2], [3, 4, 5, 6, 7, 8]]
     assert group_spans(spans + links[2:3]) == [[0, 1, 2, 3, 4, 5, 6, 7, 8]]
 
@@ -140,3 +141,19 @@ def test_consolidate() -> None:
     assert consolidate(spans, priors=priors, length=True) == [1, 7, 10]
     assert consolidate(spans, priors=priors, scores=scores) == [0, 4, 7, 10]
     assert consolidate(spans, priors=priors, scores=scores, length=True) == [0, 4, 7, 10]
+
+
+def test_overlap_containment() -> None:
+    """ test consolidate & group_spans: a span contained in another one is an overlap """
+    # the best span (2, 4) is inside a lower scored (0, 10)
+    assert consolidate([(0, 10), (2, 4)], scores=[1, 5], length=False) == [1]
+    assert consolidate([(2, 4), (0, 10)], scores=[5, 1], length=False) == [0]
+
+    # adjacent spans do not overlap
+    assert consolidate([(0, 2), (2, 4)], scores=[1, 5], length=False) == [0, 1]
+
+
+def test_group_spans_unsorted() -> None:
+    """ test group_spans: indices refer to the input order (not the sorted one) """
+    assert group_spans([(5, 6), (0, 2), (1, 3)]) == [[1, 2], [0]]
+    assert group_spans([]) == []

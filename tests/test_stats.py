@@ -1,6 +1,8 @@
 """ eCoNLL stats tests """
 
-from econll.stats import chunk_stats, token_stats
+import pytest
+
+from econll.stats import chunk_stats, token_stats, stats
 
 
 def test_token_stats(data_hyps: list[list[str]]) -> None:
@@ -21,3 +23,12 @@ def test_chunk_stats(data_hyps: list[list[str]]) -> None:
     """
     chunk_counts = chunk_stats(data_hyps)
     assert chunk_counts == {'X': 8, 'Y': 6}
+
+
+def test_stats_no_chunks(capsys: pytest.CaptureFixture[str]) -> None:
+    """ test stats on data with no chunks """
+    stats([[("a", "O"), ("b", "O")]])
+    out = capsys.readouterr().out
+
+    assert "block count: 1" in out
+    assert "chunk-level stats" in out

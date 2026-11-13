@@ -24,3 +24,9 @@ def test_scheme_tagset(labels: list[str], scheme: str, tagset: list[str]) -> Non
     :type tagset: list[str]
     """
     assert tagset == scheme_tagset(labels, scheme)
+
+
+def test_scheme_tagset_tag_format() -> None:
+    """ test scheme_tagset: tag format params are respected """
+    assert scheme_tagset(["X"], scheme="IOB", kind="suffix") == ["X-B", "X-I", "O"]
+    assert scheme_tagset(["X"], scheme="IOB", glue="_") == ["B_X", "I_X", "O"]

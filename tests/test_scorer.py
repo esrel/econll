@@ -2,7 +2,7 @@
 
 import pytest
 
-from econll.scorer import score, score_stats
+from econll.scorer import score, score_stats, weighted_average, tokeneval, chunkeval
 from econll.scorer import (compute_match_stats,
                            compute_token_stats,
                            compute_chunk_stats,
@@ -125,3 +125,15 @@ def test_compute_stats(data_tags: list[list[str]],
     assert data_total_stats.get("chunk") == tuple(map(sum, zip(*list(class_chunk_stats.values()))))
     assert data_total_stats.get("block") == compute_block_stats(data_tags, data_hyps)
     assert data_total_stats.get("spans") == compute_spans_stats(data_tags, data_hyps)
+
+
+def test_empty_evaluation() -> None:
+    """ test evaluation of data with no chunks (no classes) """
+    refs = hyps = [["O", "O"], ["O"]]
+
+    assert "Chunk-Level Evaluation" in chunkeval(refs, hyps)
+    assert "Token-Level Evaluation" in tokeneval(refs, hyps)
+    assert "Token-Level Evaluation" in tokeneval([], [])
+
+    assert weighted_average({"X": (0, 1, 0)}) == (0.0, 0.0, 0.0)
+    assert score_stats({})[1]["macro"] == (0.0, 0.0, 0.0)

@@ -19,6 +19,8 @@ functions:
     - relabel -- remap labels
     - reaffix -- remap affixes
 
+    - as_pairs -- convert a sequence of token tags or label-affix pairs to label-affix pairs
+
 shared params:
     # tag format
     - kind: str = "prefix" -- kind of affix, defaults to 'prefix'
@@ -31,105 +33,140 @@ shared params:
     - morphs: dict[str, str]        -- mapping for source to target affix set
 """
 
-__author__ = "Evgeny A. Stepanov"
-__email__ = "stepanov.evgeny.a@gmail.com"
-__status__ = "dev"
-__version__ = "0.1.0"
 
-
-from functools import partial
+from collections.abc import Mapping, Sequence
 from itertools import pairwise
+from typing import TypeVar, cast
+
+from econll.typedefs import Chunk, Pair
+
+# data item type: a sequence of either token tags or label-affix pairs
+Tags = TypeVar("Tags", str, Pair)
 
 
-def parse(data: list[str],  **kwargs) -> list[tuple[str | None, str]]:
+def parse(data: Sequence[str],
+          kind: str = "prefix",
+          glue: str = "-",
+          otag: str = "O"
+          ) -> list[Pair]:
     """
     parse tags into label-affix pairs
     :param data: token tags
-    :type data: list[str]
+    :param kind: kind of affix, defaults to 'prefix'
+    :param glue: label-affix separator, defaults to '-'
+    :param otag: outside tag, defaults to 'O'
     :return: label-affix pairs
-    :rtype: list[tuple[str | None, str]]
     """
-    return [parse_tag(token, **kwargs) for token in data]
+    return [parse_tag(token, kind=kind, glue=glue, otag=otag) for token in data]
 
 
-def merge(data: list[tuple[str | None, str]],  **kwargs) -> list[str]:
+def merge(data: Sequence[Pair],
+          kind: str = "prefix",
+          glue: str = "-",
+          otag: str = "O"
+          ) -> list[str]:
     """
     merge tags from label-affix pairs
     :param data: label-affix pairs
-    :type data: list[tuple[str | None, str]]
+    :param kind: kind of affix, defaults to 'prefix'
+    :param glue: label-affix separator, defaults to '-'
+    :param otag: outside tag, defaults to 'O'
     :return: tags
-    :rtype: list[str]
     """
-    return [merge_tag(label, affix, **kwargs) for label, affix in data]
+    return [merge_tag(label, affix, kind=kind, glue=glue, otag=otag) for label, affix in data]
 
 
-def chunk(data: list[str | tuple[str | None, str]], **kwargs) -> list[tuple[str, int, int]]:
+def as_pairs(data: Sequence[str] | Sequence[Pair],
+             kind: str = "prefix",
+             glue: str = "-",
+             otag: str = "O"
+             ) -> list[Pair]:
+    """
+    convert a sequence of token tags or label-affix pairs to label-affix pairs
+    :param data: a sequence of token tags or label-affix pairs
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :param otag: outside tag (tags only), defaults to 'O'
+    :return: label-affix pairs
+    """
+    if all(isinstance(token, str) for token in data):
+        return parse(cast(Sequence[str], data), kind=kind, glue=glue, otag=otag)
+    return list(cast(Sequence[Pair], data))
+
+
+def chunk(data: Sequence[str] | Sequence[Pair],
+          kind: str = "prefix",
+          glue: str = "-",
+          otag: str = "O"
+          ) -> list[Chunk]:
     """
     extract chunks from a sequence of token tags or label-affix pairs
     :param data: a sequence of token tags or label-affix pairs
-    :type data: list[str | tuple[str | None, str]]
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :param otag: outside tag (tags only), defaults to 'O'
     :return: chunks
-    :rtype: list[tuple[str, int, int]]
     """
-    data = parse(data, **kwargs) if all(isinstance(token, str) for token in data) else data
+    pairs = as_pairs(data, kind=kind, glue=glue, otag=otag)
 
-    bos = [i for i, boc in enumerate(get_boc(data)) if boc]
-    eos = [i for i, eoc in enumerate(get_eoc(data)) if eoc]
-    lbl = [label for i, (label, _) in enumerate(data) if i in bos]
+    bos = [i for i, boc in enumerate(get_boc(pairs)) if boc]
+    eos = [i for i, eoc in enumerate(get_eoc(pairs)) if eoc]
 
-    return [(y, b, e + 1) for y, b, e in zip(lbl, bos, eos, strict=True)]
+    return [(cast(str, pairs[b][0]), b, e + 1) for b, e in zip(bos, eos, strict=True)]
 
 
-def remap(data: list[str | tuple[str | None, str]],
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def remap(data: Sequence[Tags],
           otag: str = "O",
-          labels: dict[str, str | None] = None,
-          morphs: dict[str, str] = None,
-          **kwargs
-          ) -> list[str | tuple[str | None, str]]:
+          labels: Mapping[str, str | None] | None = None,
+          morphs: Mapping[str, str] | None = None,
+          kind: str = "prefix",
+          glue: str = "-"
+          ) -> list[Tags]:
     """
     remap token label or affix
     :param data: a sequence of token tags or label-affix pairs
-    :type data: list[str | tuple[str | None, str]]
     :param otag: outside tag, defaults to 'O'
-    :type otag: str, optional
     :param labels: mapping for label substitution, defaults to None
-    :type labels: dict[str, str | None], optional
     :param morphs: mapping for affix substitution, defaults to None
-    :type morphs: dict[str, str], optional
-    :param kwargs: tag parsing parameters
-    :return: tags or label-affix pairs
-    :rtype: list[str | tuple[str | None, str]]
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :return: tags or label-affix pairs (same as input)
     """
     labels = labels or {}
     morphs = morphs or {}
-    tokens = parse(data, **kwargs) if all(isinstance(token, str) for token in data) else data
-    tokens = [((new_label := labels.get(label, label)),
-               (morphs.get(affix, affix) if new_label else otag))
-              for label, affix in tokens]
-    return merge(tokens, **kwargs) if all(isinstance(token, str) for token in data) else tokens
+    pairs = as_pairs(data, kind=kind, glue=glue, otag=otag)
+    pairs = [((new_label := labels.get(label, label) if label is not None else None),
+              (morphs.get(affix, affix) if new_label else otag))
+             for label, affix in pairs]
+    if all(isinstance(token, str) for token in data):
+        return cast(list[Tags], merge(pairs, kind=kind, glue=glue, otag=otag))
+    return cast(list[Tags], pairs)
 
 
 def parse_tag(tag: str,
               kind: str = "prefix",
               glue: str = "-",
               otag: str = "O"
-              ) -> tuple[str | None, str]:
+              ) -> Pair:
     """
     parse tag into affix & label w.r.t. params
     :param tag: token tag
-    :type tag: str
     :param kind: kind of affix, defaults to 'prefix'
-    :type kind: str, optional
     :param glue: label-affix separator, defaults to '-'
-    :type glue: str, optional
     :param otag: outside tag, defaults to 'O'
-    :type otag: str, optional
     :return: label-affix pair
-    :rtype: tuple[str | None, str]
     """
-    parts = tuple(tag.split(glue))
-    parts = parts if kind == "prefix" else tuple(reversed(parts))
-    affix, label = (otag, None) if tag == otag else parts
+    if tag == otag:
+        return None, otag
+
+    # split once, so that labels can contain the glue (e.g. `B-New-York`)
+    parts = tag.split(glue, 1) if kind == "prefix" else tag.rsplit(glue, 1)[::-1]
+
+    if len(parts) != 2:
+        raise ValueError(f"cannot parse tag '{tag}' with glue '{glue}'")
+
+    affix, label = parts
     return label, affix
 
 
@@ -142,17 +179,11 @@ def merge_tag(label: str | None,
     """
     merge affix & label into a tag w.r.t. params
     :param label: token label
-    :type label: str | None
     :param affix: token affix
-    :type affix: str
     :param kind: kind of affix, defaults to 'prefix'
-    :type kind: str, optional
     :param glue: label-affix separator, defaults to '-'
-    :type glue: str, optional
     :param otag: outside tag (affix), defaults to 'O'
-    :type otag: str, optional
     :return: token tag
-    :rtype: str
     """
     prefix, suffix = (affix, label) if kind == "prefix" else (label, affix)
     return otag if label is None else f"{prefix}{glue}{suffix}"
@@ -165,21 +196,14 @@ def isa_boc(prev_label: str | None, prev_affix: str,
     """
     is a beginning of a chunk: checks if a chunk started between the previous and the current token
     :param prev_label: previous label
-    :type prev_label: str | None
     :param prev_affix: previous affix
-    :type prev_affix: str
     :param curr_label: current label
-    :type curr_label: str | None
     :param curr_affix: current affix
-    :type curr_affix: str
     :return: beginning-of-chunk truth value
-    :rtype: bool
     """
-    boc: bool = False
-    boc = True if curr_affix in {"B", "S"} else boc
-    boc = True if prev_affix in {"E", "S", "O"} and curr_affix in {"I", "E"} else boc
-    boc = True if prev_label != curr_label and curr_affix != "O" else boc
-    return boc
+    return (curr_affix in {"B", "S"}
+            or (prev_affix in {"E", "S", "O"} and curr_affix in {"I", "E"})
+            or (prev_label != curr_label and curr_affix != "O"))
 
 
 def isa_eoc(prev_label: str | None, prev_affix: str,
@@ -188,43 +212,32 @@ def isa_eoc(prev_label: str | None, prev_affix: str,
     """
     is an end of a chunk: checks if a chunk ended between the previous and the current token
     :param prev_label: previous label
-    :type prev_label: str | None
     :param prev_affix: previous affix
-    :type prev_affix: str
     :param curr_label: current label
-    :type curr_label: str | None
     :param curr_affix: current affix
-    :type curr_affix: str
     :return: end-of-chunk truth value
-    :rtype: bool
     """
-    eoc: bool = False
-    eoc = True if prev_affix in {"E", "S"} else eoc
-    eoc = True if prev_affix in {"B", "I"} and curr_affix in {"B", "S", "O"} else eoc
-    eoc = True if prev_label != curr_label and prev_affix != "O" else eoc
-    return eoc
+    return (prev_affix in {"E", "S"}
+            or (prev_affix in {"B", "I"} and curr_affix in {"B", "S", "O"})
+            or (prev_label != curr_label and prev_affix != "O"))
 
 
-def get_boc(data: list[tuple[str | None, str]]) -> list[bool]:
+def get_boc(data: Sequence[Pair]) -> list[bool]:
     """
     get beginning of a chunk flags (bool) for a list of label-affix pairs
     :param data: label-affix pairs
-    :type data: list[tuple[str | None, str]]
     :return: token-level boc flags
-    :rtype: list[bool]
     """
-    return [isa_boc(*prev, *curr) for prev, curr in pairwise([(None, "O")] + data)]
+    return [isa_boc(*prev, *curr) for prev, curr in pairwise([(None, "O"), *data])]
 
 
-def get_eoc(data: list[tuple[str | None, str]]) -> list[bool]:
+def get_eoc(data: Sequence[Pair]) -> list[bool]:
     """
     get end of a chunk flags (bool) for a list of label-affix pairs
     :param data: label-affix pairs
-    :type data: list[tuple[str | None, str]]
     :return: token-level eoc flags
-    :rtype: list[bool]
     """
-    return [isa_eoc(*prev, *curr) for prev, curr in pairwise(data + [(None, "O")])]
+    return [isa_eoc(*prev, *curr) for prev, curr in pairwise([*data, (None, "O")])]
 
 
 # IOB1 & IOE1 support: with & without label match requirement
@@ -237,17 +250,11 @@ def isa_coc(prev_label: str | None, prev_affix: str,
     checks if there is a chunk change between the previous and the current token
     by default requires token labels to match
     :param prev_label: previous label
-    :type prev_label: str | None
     :param prev_affix: previous affix
-    :type prev_affix: str
     :param curr_label: current label
-    :type curr_label: str | None
     :param curr_affix: current affix
-    :type curr_affix: str
     :param same_label: require label match or not, defaults to True
-    :type same_label: bool, optional
     :return: change-of-chunk truth value
-    :rtype: bool
     """
     boc = isa_boc(prev_label, prev_affix, curr_label, curr_affix)
     eoc = isa_eoc(prev_label, prev_affix, curr_label, curr_affix)
@@ -255,28 +262,58 @@ def isa_coc(prev_label: str | None, prev_affix: str,
     return boc and eoc and lbl
 
 
-def get_coc_boc(data: list[tuple[str | None, str]], **kwargs) -> list[bool]:
+def get_coc_boc(data: Sequence[Pair], same_label: bool = True) -> list[bool]:
     """
     get change-of-chunk flags (output is len(data) - 1)
     :param data: label-affix pairs
-    :type data: list[tuple[str | None, str]]
+    :param same_label: require label match or not, defaults to True
     :return: boundary-level change-of-chunk flags
-    :rtype: list[bool]
     """
-    return [False] + [isa_coc(*prev, *curr, **kwargs) for prev, curr in pairwise(data)]
+    return [False] + [isa_coc(*prev, *curr, same_label=same_label) for prev, curr in pairwise(data)]
 
 
-def get_coc_eoc(data: list[tuple[str | None, str]], **kwargs) -> list[bool]:
+def get_coc_eoc(data: Sequence[Pair], same_label: bool = True) -> list[bool]:
     """
     get change-of-chunk flags (output is len(data) - 1)
     :param data: label-affix pairs
-    :type data: list[tuple[str | None, str]]
+    :param same_label: require label match or not, defaults to True
     :return: boundary-level change-of-chunk flags
-    :rtype: list[bool]
     """
-    return [isa_coc(*prev, *curr, **kwargs) for prev, curr in pairwise(data)] + [False]
+    return [isa_coc(*prev, *curr, same_label=same_label) for prev, curr in pairwise(data)] + [False]
 
 
 # alias functions
-relabel = partial(remap, morphs=None)
-reaffix = partial(remap, labels=None)
+def relabel(data: Sequence[Tags],
+            labels: Mapping[str, str | None],
+            otag: str = "O",
+            kind: str = "prefix",
+            glue: str = "-"
+            ) -> list[Tags]:
+    """
+    remap labels (alias for `remap` with `labels` only)
+    :param data: a sequence of token tags or label-affix pairs
+    :param labels: mapping for label substitution; if target is None, the label is removed
+    :param otag: outside tag, defaults to 'O'
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :return: tags or label-affix pairs (same as input)
+    """
+    return remap(data, otag=otag, labels=labels, kind=kind, glue=glue)
+
+
+def reaffix(data: Sequence[Tags],
+            morphs: Mapping[str, str],
+            otag: str = "O",
+            kind: str = "prefix",
+            glue: str = "-"
+            ) -> list[Tags]:
+    """
+    remap affixes (alias for `remap` with `morphs` only)
+    :param data: a sequence of token tags or label-affix pairs
+    :param morphs: mapping for affix substitution
+    :param otag: outside tag, defaults to 'O'
+    :param kind: kind of affix (tags only), defaults to 'prefix'
+    :param glue: label-affix separator (tags only), defaults to '-'
+    :return: tags or label-affix pairs (same as input)
+    """
+    return remap(data, otag=otag, morphs=morphs, kind=kind, glue=glue)

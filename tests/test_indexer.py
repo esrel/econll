@@ -72,3 +72,12 @@ def test_merge_pieces() -> None:
     remove: list[str] = ['[CLS]', '[SEP]']
     marker: str = '##'
     assert tokens == merge_pieces(pieces, marker, remove)
+
+
+def test_index_errors_and_empty() -> None:
+    """ test index_tokens (token not in source) & merge_pieces (no pieces) """
+    with pytest.raises(ValueError):
+        index_tokens(["ab"], "a b")
+
+    assert merge_pieces([], "##") == []
+    assert merge_pieces(["[CLS]"], "##", remove=["[CLS]"]) == []

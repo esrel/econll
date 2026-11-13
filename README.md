@@ -123,23 +123,27 @@ To install `econll` run:
 pip install econll
 ```
 
+`econll` requires Python 3.10+ and has no dependencies. It is fully typed (`py.typed`).
+
 ## Usage
 
 It is possible to run `econll` from command-line, as well as to import the methods.
 
 ### Command-Line Usage
 
+The `econll` command is installed with the package; `python -m econll` is equivalent.
+
 ```
-usage: PROG [-h] -d DATA [-r REFS] 
-            [--separator SEPARATOR] [--boundary BOUNDARY] [--docstart DOCSTART] 
-            [--kind {prefix,suffix}] [--glue GLUE] [--otag OTAG]
-            [-f {conll,parse,mdown}] [-o OUTS]
-            [{eval,conv}]
+usage: econll [-h] -d DATA [-r REFS] [--separator SEPARATOR]
+              [--boundary BOUNDARY] [--docstart DOCSTART]
+              [--kind {prefix,suffix}] [--glue GLUE] [--otag OTAG]
+              [-f {conll,parse,mdown}] [-o OUTS]
+              [{eval,conv,stat}]
 
 eCoNLL: Extended CoNLL Utilities
 
 positional arguments:
-  {eval,conv}        task to perform
+  {eval,conv,stat}      task to perform
 
 options:
   -h, --help            show this help message and exit
@@ -164,22 +168,83 @@ Data Conversion Arguments:
   -f {conll,parse,mdown}, --form {conll,parse,mdown}
                         output format (kind)
   -o OUTS, --outs OUTS  path to output file
-
 ```
+
+The data file is a CoNLL file: the first column is the token, and the last column is the tag
+(or the hypothesis, if references are in the column before it or in a separate file).
+Lines that start with `--docstart` (default: `-DOCSTART-`) are skipped;
+for space-separated files, such as CoNLL-2003, use `--separator " "`.
 
 #### Evaluation
 
+Token-level and chunk-level evaluation (`eval` is the default command):
+
 ```commandline
-python -m econll -d DATA
-python -m econll eval -d DATA
-python -m econll eval -d DATA -r REFS
+econll -d DATA
+econll eval -d DATA
+econll eval -d DATA -r REFS
+```
+
+If `-r` is not provided, the references are read from the pre-ultimate column of `DATA`.
+
+#### Statistics
+
+Label distribution at the token and chunk levels:
+
+```commandline
+econll stat -d DATA
 ```
 
 #### Conversion
 
+Convert between CoNLL (`conll`), JSON/JSONL (`parse`), and in-line Markdown (`mdown`) formats:
+
 ```commandline
-python -m econll conv -d DATA -f FORMAT -o PATH
+econll conv -d DATA -f FORMAT -o PATH
 ```
+
+The format of `DATA` is determined by the file extension:
+`.jsonl` is `parse`, `.mdown` is `mdown`, anything else is read as CoNLL.
+For CoNLL input, the tag is taken from the last column.
+The output path (`-o`) is required.
+
+```
+conll:  [("a", "B-food"), ("b", "I-food"), ("c", "O")]
+parse:  {"text": "a b c", "spans": [{"label": "food", "bos": 0, "eos": 3, "value": "a b"}]}
+mdown:  [a b](food) c
+```
+
+In `mdown`, a span can have a value (synonym): `[a b](food:A.B) c`.
+Tag format parameters (`--kind`, `--glue`, `--otag`) apply to CoNLL data.
+
+### Python Usage
+
+```python
+from econll import load, chunk, chunkeval, convert
+from econll.reader import get_refs, get_hyps
+
+data = load("data.tsv")                       # list of blocks of token tuples
+refs, hyps = get_refs(data), get_hyps(data)   # blocks of reference & hypothesis tags
+
+chunk(hyps[0])                                # e.g. [("food", 0, 2)]: (label, begin, end)
+print(chunkeval(refs, hyps))                  # chunk-level evaluation report
+convert("[a b](food) c", kind="conll")        # [("a", "B-food"), ("b", "I-food"), ("c", "O")]
+```
+
+Tag format is configurable by `kind` (`"prefix"` or `"suffix"`), `glue` and `otag` keyword arguments
+of the functions that parse tags (e.g. `chunk(tags, kind="suffix", glue="_")`).
+Public functions are listed in `econll.__all__`.
+
+
+## Development
+
+```commandline
+pip install -e . --group dev        # or: uv sync
+pytest
+mypy
+```
+
+Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 
 ## Versioning
